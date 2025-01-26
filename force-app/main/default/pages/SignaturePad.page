@@ -1,0 +1,72 @@
+<apex:page standardController="Account" extensions="SignaturePadController" standardStylesheets="true">
+  <apex:form>
+    <div>
+      <h1>The Agreement</h1>
+      <p>This agreement is between {!Account.Name} and the undersigned.</p>
+      <p>1. The undersigned agrees to pay the sum of $1000 on the first of each month for the next 12 months.</p>
+      <p>2. The undersigned agrees to maintain the property in good condition.</p>
+      <p>3. The undersigned agrees to vacate the property within 30 days of the end of the agreement.</p>
+      <p>By signing below, you agree to the terms and conditions of this agreement.</p>
+    </div>
+    <br />
+    <div>
+      <h1>Sign Here</h1>
+    </div>
+
+    <canvas id="signatureCanvas" width="300" height="50" style="border: 2px solid red;"></canvas>
+
+    <br />
+    <button type="button" onclick="clearCanvas()">Clear</button>
+    <button type="button" onclick="saveSignature()">Save</button>
+    <apex:commandButton value="Save PDF to Account" action="{!uploadPDF}" />
+  </apex:form>
+
+  <script>
+    var canvas = document.getElementById("signatureCanvas");
+    var ctx = canvas.getContext("2d");
+    var isDrawing = false;
+    var lastX = 0;
+    var lastY = 0;
+
+    canvas.addEventListener("mousedown", function (event) {
+      isDrawing = true;
+      [lastX, lastY] = [event.offsetX, event.offsetY];
+    });
+
+    canvas.addEventListener("mousemove", function (event) {
+      if (isDrawing) {
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(event.offsetX, event.offsetY);
+        ctx.stroke();
+        [lastX, lastY] = [event.offsetX, event.offsetY];
+      }
+    });
+
+    canvas.addEventListener("mouseup", function () {
+      isDrawing = false;
+    });
+
+    canvas.addEventListener('mouseout', function () {
+      isDrawing = false;
+    });
+
+    function clearCanvas() {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function saveSignature() {
+      var accountId = "{!JSENCODE(Account.Id)}";
+      var signatureData = canvas.toDataURL("image/png").replace(/^data:image\/(png|jpg);base64,/, "");
+      SignaturePadController.saveSignature(signatureData, "{!Account.Id}", function (result, event) {
+        if (event.status) {
+          alert("Signature saved successfully!");
+          // Redirect to the PDF generation page
+          window.location.href = "/apex/PreviewPage?latestAttachmentId=" + result + "&id=" + accountId;
+        } else {
+          alert("Error saving signature: " + event.message);
+        }
+      });
+    }
+  </script>
+</apex:page>

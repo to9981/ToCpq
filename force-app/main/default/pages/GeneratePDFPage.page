@@ -1,0 +1,17 @@
+<apex:page standardController="Account" extensions="SignaturePadController" standardStylesheets="true" renderAs="pdf">
+  <div>
+    <h1>The Agreement</h1>
+    <p>This agreement is between {!Account.Name} and the undersigned.</p>
+    <p>1. The undersigned agrees to pay the sum of $1000 on the first of each month for the next 12 months.</p>
+    <p>2. The undersigned agrees to maintain the property in good condition.</p>
+    <p>3. The undersigned agrees to vacate the property within 30 days of the end of the agreement.</p>
+    <p>By signing below, you agree to the terms and conditions of this agreement.</p>
+  </div>
+  <br />
+  <div>
+    <h1>Sign Here</h1>
+  </div>
+  <apex:outputPanel rendered="{!NOT(ISNULL($CurrentPage.parameters.latestAttachmentId))}">
+    <img src="/servlet/servlet.FileDownload?file={!$CurrentPage.parameters.latestAttachmentId}" />
+  </apex:outputPanel>
+</apex:page>

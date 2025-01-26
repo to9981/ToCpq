@@ -1,0 +1,4 @@
+<aura:component implements="force:hasRecordId,force:lightningQuickActionWithoutHeader" access="global">
+  <aura:attribute name="recordId" type="String" />
+  <c:createServiceAppointment recordId="{!v.recordId}" onclosemodal="{!c.handleCloseModal}" />
+</aura:component>

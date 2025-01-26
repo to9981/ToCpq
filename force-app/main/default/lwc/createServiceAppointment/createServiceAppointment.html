@@ -1,0 +1,15 @@
+<template>
+  <lightning-quick-action-panel header="Create Service Appointment" icon-name="standard:service_appointment">
+
+    <lightning-record-edit-form object-api-name="ServiceAppointment" onsuccess={handleSuccess} onerror={handleError}
+      onsubmit={handleSubmit}>
+      <lightning-input-field field-name="SchedStartTime" data-id="schedStartTime"></lightning-input-field>
+      <lightning-input-field field-name="SchedEndTime" data-id="schedEndTime"></lightning-input-field>
+      <lightning-input-field field-name="ParentRecordId" value={recordId} disabled="true"></lightning-input-field>
+      <div class="slds-var-m-top_xx-large slds-align_absolute-center">
+        <lightning-button label="Create Appointment" variant="brand" type="submit"></lightning-button>
+      </div>
+    </lightning-record-edit-form>
+
+  </lightning-quick-action-panel>
+</template>
