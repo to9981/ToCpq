@@ -1,4 +1,5 @@
-<apex:page standardController="Account" extensions="SignaturePadController" standardStylesheets="true" renderAs="pdf">
+<apex:page standardController="Account" extensions="SignaturePadController" renderAs="pdf">
+
   <div>
     <h1>The Agreement</h1>
     <p>This agreement is between {!Account.Name} and the undersigned.</p>

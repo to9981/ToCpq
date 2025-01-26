@@ -1,4 +1,4 @@
-<apex:page standardController="Account" extensions="SignaturePadController" standardStylesheets="true">
+<apex:page standardController="Account" extensions="SignaturePadController">
   <apex:form>
     <div>
       <h1>The Agreement</h1>
@@ -17,8 +17,8 @@
 
     <br />
     <button type="button" onclick="clearCanvas()">Clear</button>
-    <button type="button" onclick="saveSignature()">Save</button>
-    <apex:commandButton value="Save PDF to Account" action="{!uploadPDF}" />
+    <button type="button" onclick="saveSignature()">Preview
+      Agreement</button>
   </apex:form>
 
   <script>
@@ -52,19 +52,18 @@
     });
 
     function clearCanvas() {
-      context.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
     function saveSignature() {
       var accountId = "{!JSENCODE(Account.Id)}";
       var signatureData = canvas.toDataURL("image/png").replace(/^data:image\/(png|jpg);base64,/, "");
-      SignaturePadController.saveSignature(signatureData, "{!Account.Id}", function (result, event) {
+      SignaturePadController.saveSignature(signatureData, accountId, function (result, event) {
         if (event.status) {
-          alert("Signature saved successfully!");
           // Redirect to the PDF generation page
           window.location.href = "/apex/PreviewPage?latestAttachmentId=" + result + "&id=" + accountId;
         } else {
-          alert("Error saving signature: " + event.message);
+          alert("Error generate preview: " + event.message);
         }
       });
     }
