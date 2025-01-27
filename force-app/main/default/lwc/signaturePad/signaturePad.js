@@ -1,6 +1,7 @@
 import { LightningElement, track, api, wire } from 'lwc';
 import { getRecord } from 'lightning/uiRecordApi';
 import { NavigationMixin } from 'lightning/navigation';
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import saveSignature from '@salesforce/apex/SignaturePadController.saveSignature';
 import generateAndSavePDF from '@salesforce/apex/SignaturePadController.generateAndSavePDF';
 import ACCOUNT_NAME_FIELD from '@salesforce/schema/Account.Name';
@@ -9,6 +10,8 @@ export default class SignaturePad extends NavigationMixin(LightningElement) {
     @api recordId;
     @track account;
     @track signatureData;
+    @track attachmentId;
+    @track showSaveAgreementButton = true;
 
     canvas;
     ctx;
@@ -72,7 +75,14 @@ export default class SignaturePad extends NavigationMixin(LightningElement) {
         try {
             const pdfAttachmentId = await generateAndSavePDF({ accountId: this.recordId, attachmentId: this.attachmentId });
             console.log('PDF Attachment ID:', pdfAttachmentId);
-            // Optionally, you can show a success message or perform other actions here
+            this.showSaveAgreementButton = false;
+            this.dispatchEvent(
+                new ShowToastEvent({
+                    title: 'Success',
+                    message: 'Agreement saved successfully!',
+                    variant: 'success',
+                })
+            );
         } catch (error) {
             console.error('Error generating and saving PDF:', error);
         }

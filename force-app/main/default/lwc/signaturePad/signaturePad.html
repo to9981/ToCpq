@@ -26,9 +26,11 @@
         <div class="slds-var-p-around_small">
           <img src={signatureData} alt="Signature" style="border: 2px solid grey;" />
         </div>
-        <div class="slds-var-p-around_small">
-          <lightning-button label="Save Agreement" onclick={saveAgreement}></lightning-button>
-        </div>
+        <template lwc:if={showSaveAgreementButton}>
+          <div class="slds-var-p-around_small">
+            <lightning-button label="Save Agreement" onclick={saveAgreement}></lightning-button>
+          </div>
+        </template>
       </template>
     </div>
   </lightning-card>
