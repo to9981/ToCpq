@@ -6,6 +6,7 @@ global with sharing class SignaturePadController {
     }
     
     @RemoteAction
+    @AuraEnabled
     global static String saveSignature(String signatureBody, Id parentId) {
         try {
             // Save the signature as an attachment
@@ -23,6 +24,33 @@ global with sharing class SignaturePadController {
         } catch (Exception e) {
             System.debug('Error saving signature: ' + e.getMessage());
             return null;
+        }
+    }
+    
+    @AuraEnabled
+    public static String generateAndSavePDF(Id accountId, Id attachmentId) {
+        try {
+            // Generate the PDF content
+            PageReference pdfPage = Page.GeneratePDFPage;
+            pdfPage.getParameters().put('id', accountId);
+            pdfPage.getParameters().put('latestAttachmentId', attachmentId);
+            Blob pdfBlob = pdfPage.getContentAsPDF();
+            
+            // Save the PDF as an attachment
+            Attachment pdfAttachment = new Attachment();
+            pdfAttachment.ParentId = accountId;
+            pdfAttachment.Body = pdfBlob;
+            pdfAttachment.ContentType = 'application/pdf';
+            pdfAttachment.Name = 'Agreement-' + System.now() + '.pdf';
+            insert pdfAttachment;
+            
+            System.debug('PDF saved with Id: ' + pdfAttachment.Id);
+            
+            // Return the ID of the saved PDF attachment
+            return pdfAttachment.Id;
+        } catch (Exception e) {
+            System.debug('Error generating and saving PDF: ' + e.getMessage());
+            throw new AuraHandledException('Error generating and saving PDF: ' + e.getMessage());
         }
     }
     

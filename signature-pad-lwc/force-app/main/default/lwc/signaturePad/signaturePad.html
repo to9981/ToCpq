@@ -1,0 +1,22 @@
+<html>
+  <template>
+    <div>
+      <h1>The Agreement</h1>
+      <p>This agreement is between {accountName} and the undersigned.</p>
+      <p>1. The undersigned agrees to pay the sum of $1000 on the first of each month for the next 12 months.</p>
+      <p>2. The undersigned agrees to maintain the property in good condition.</p>
+      <p>3. The undersigned agrees to vacate the property within 30 days of the end of the agreement.</p>
+      <p>By signing below, you agree to the terms and conditions of this agreement.</p>
+    </div>
+    <br />
+    <div>
+      <h1>Sign Here</h1>
+    </div>
+
+    <canvas lwc:dom="manual" id="signatureCanvas" width="300" height="50" style="border: 2px solid red;"></canvas>
+
+    <br />
+    <button onclick={clearCanvas}>Clear</button>
+    <button onclick={saveSignature}>Preview Agreement</button>
+  </template>
+</html>
