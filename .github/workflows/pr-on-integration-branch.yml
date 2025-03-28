@@ -90,7 +90,10 @@ jobs:
             - name: 'Installing SFDX scanner'
               env:
                 SFDX_USE_EXTERNAL_NODE: true
-              run: sfdx plugins:install @salesforce/sfdx-scanner
+                NODE_VERSION: 20.0.0
+              run: |
+                node --version
+                sfdx plugins:install @salesforce/sfdx-scanner
 
             # Get the Integration Org SFDX URL and store it in a text file
             - name: 'Populate auth file with SFDX_URL secret of integration org'
