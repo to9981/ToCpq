@@ -19,6 +19,9 @@ jobs:
     validate-deployment-on-integration-org:
         runs-on: ubuntu-latest
         if: ${{ github.actor != 'dependabot[bot]' }}
+        defaults:
+          run:
+            shell: bash -l {0}
         steps:
             # Install nodejs
             - uses: actions/setup-node@v3
