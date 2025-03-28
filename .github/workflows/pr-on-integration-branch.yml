@@ -93,6 +93,7 @@ jobs:
                 NODE_VERSION: 20.0.0
               run: |
                 node --version
+                npm config set engine-strict true
                 sfdx plugins:install @salesforce/sfdx-scanner
 
             # Get the Integration Org SFDX URL and store it in a text file
