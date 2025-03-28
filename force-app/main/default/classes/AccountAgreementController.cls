@@ -40,7 +40,7 @@ public with sharing class AccountAgreementController {
                 ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR, 'Signature data is missing.'));
             }
         } catch (Exception e) {
-            ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR, 'Error: '+ e.getMessage()));
+            ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR, 'Error--> '+ e.getMessage()));
         }
         return null;
     }
