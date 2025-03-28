@@ -53,7 +53,7 @@ jobs:
               # pipe to a a text file.
               # Then we call the local script parsePR.js, which will create
               # a new file called testsToRun.txt. This file will have the list
-              # of tests to run separated by a comma
+              # of tests to run separated by a comma.
 
               # Finally, we add the list of tests to the $GITHUB_ENV variable
               # as this allows us to reference the list in a subsequent step.  If you
