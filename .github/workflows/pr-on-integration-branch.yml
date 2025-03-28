@@ -24,6 +24,7 @@ jobs:
             - uses: actions/setup-node@v3
               with:
                 node-version: '20.0.0'
+                check-latest: true
 
             # Checkout the source code
             - name: 'Checkout source code'
