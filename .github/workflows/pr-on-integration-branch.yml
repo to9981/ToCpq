@@ -91,10 +91,11 @@ jobs:
               env:
                 SFDX_USE_EXTERNAL_NODE: true
                 NODE_VERSION: 20.0.0
+                npm_config_user_agent: npm
               run: |
                 node --version
                 npm config set engine-strict true
-                sfdx plugins:install @salesforce/sfdx-scanner --ignore-engines
+                sfdx plugins:install @salesforce/sfdx-scanner
 
             # Get the Integration Org SFDX URL and store it in a text file
             - name: 'Populate auth file with SFDX_URL secret of integration org'
