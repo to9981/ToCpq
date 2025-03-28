@@ -28,6 +28,8 @@ jobs:
               with:
                 node-version: '20.0.0'
                 check-latest: true
+            - name: Check Node version
+              run: node --version
 
             # Checkout the source code
             - name: 'Checkout source code'
