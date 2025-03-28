@@ -18,8 +18,6 @@ on:
 jobs:
     validate-deployment-on-integration-org:
         runs-on: ubuntu-latest
-        env:
-          SFDX_USE_EXTERNAL_NODE: true
         if: ${{ github.actor != 'dependabot[bot]' }}
         steps:
             # Install nodejs
@@ -81,7 +79,9 @@ jobs:
 
             # Install SFDX scanner
             - name: 'Installing SFDX scanner'
-              run: sfdx plugins:install @salesforce/sfdx-scanner
+              run: |
+                export SFDX_USE_EXTERNAL_NODE=true
+                sfdx plugins:install @salesforce/sfdx-scanner
 
             # Get the Integration Org SFDX URL and store it in a text file
             - name: 'Populate auth file with SFDX_URL secret of integration org'
