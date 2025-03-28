@@ -18,6 +18,8 @@ on:
 jobs:
     validate-deployment-on-integration-org:
         runs-on: ubuntu-latest
+        env:
+          SFDX_USE_EXTERNAL_NODE: true
         if: ${{ github.actor != 'dependabot[bot]' }}
         steps:
             # Install nodejs
