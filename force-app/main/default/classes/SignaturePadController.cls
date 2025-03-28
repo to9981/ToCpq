@@ -22,7 +22,7 @@ global with sharing class SignaturePadController {
             // Return the ID of the saved attachment
             return a.Id;
         } catch (Exception e) {
-            System.debug('Error saving signature--> ' + e.getMessage());
+            System.debug('Error saving signature: ' + e.getMessage());
             return null;
         }
     }
