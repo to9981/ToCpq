@@ -93,6 +93,8 @@ jobs:
                 NODE_VERSION: 20.0.0
                 npm_config_user_agent: npm
               run: |
+                nvm install 20.0
+                nvm ls
                 nvm use 20.0
                 node --version
                 npm config set engine-strict true
