@@ -8,7 +8,7 @@
             <button onclick="clearCanvas(); return false;">Clear Signature</button>
         </div>
         <button onclick="saveAgreement(); return false;">Save Agreement</button>
-        <div>hello test1</div>
+        <div>hello test2</div>
     </apex:form>
 
     <script>
