@@ -35,7 +35,7 @@ jobs:
         run: |
           git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
           git fetch --all
-          npx sgd generate --to HEAD --from HEAD~1 --output .sgd-output
+          ./node_modules/.bin/sgd generate --to HEAD --from HEAD~1 --output .sgd-output
           cat .sgd-output/package/package.xml
 
       - name: Deploy delta
