@@ -4,7 +4,7 @@ public with sharing class PDFRenderController {
     public PDFRenderController(ApexPages.StandardController stdController) {
         this.account = (Account) stdController.getRecord();
     }
-    //comment added
+    //comment added2
     public void uploadPDF() {
         try {
             // Generate the PDF from the current page
