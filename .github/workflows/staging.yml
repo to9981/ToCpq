@@ -47,4 +47,4 @@ jobs:
           sf project deploy start \
             --manifest .sgd-output/package/package.xml \
             --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
-            --target-org ToCpq
+            # --target-org ToCpq
