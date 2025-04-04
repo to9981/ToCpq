@@ -20,9 +20,6 @@ permissions:
   actions: read
   checks: write
 
-
-            
-
 # Jobs to be executed
 jobs:
     validate-deployment-on-integration-org:
