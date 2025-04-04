@@ -25,7 +25,7 @@ jobs:
 
       - name: Install sfdx-git-delta
         run: |
-          sf plugins install sfdx-git-delta
+          echo y | sf plugins install sfdx-git-delta
           # npm install sfdx-git-delta
           # # Manually add global npm bin to PATH so 'sgd' is found
           # echo "/usr/local/bin" >> $GITHUB_PATH
