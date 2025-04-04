@@ -1,0 +1,37 @@
+name: CICD Delta Change Detection
+
+on: 
+  push:
+    branches:
+      - integration
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+
+      - name: Set up SF CLI 
+        uses: sfdx-actions/setup-sfdx@v1
+        with:
+          sfdx-auth-url: ${{ secrets.SFDX_INTEGRATION_URL }}
+
+      - name: Install sfdx-git-delta
+        run: |
+          npm install -g sfdx-git-delta
+
+      - name: Generate delta
+        run: |
+          git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
+          git fetch --all
+          sgd generate --to HEAD --from HEAD~1 --output .sgd-output
+          cat .sgd-output/package/package.xml
+
+      - name: Deploy delta
+        run: |
+          sf project deploy start \
+            --manifest .sgd-output/package/package.xml \
+            --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
+            --target-org MyIntegrationOrg
