@@ -38,6 +38,7 @@ jobs:
         run: |
           git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
           git fetch --all
+          mkdir -p .sgd-output
           sf sgd source delta --to "HEAD" --from "HEAD~1" --output-dir .sgd-output
           cat .sgd-output/package/package.xml
 
