@@ -3,7 +3,7 @@ name: CICD Delta Change Detection
 on:
   push:
     branches:
-      - integration
+      - dev2
 
 jobs:
   build:
