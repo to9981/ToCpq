@@ -16,7 +16,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: "16"
 
       - name: Set up SF CLI
         uses: sfdx-actions/setup-sfdx@v1
@@ -25,11 +25,11 @@ jobs:
 
       - name: Install sfdx-git-delta
         run: |
-          sudo npm install sfdx-git-delta
-          # Manually add global npm bin to PATH so 'sgd' is found
-          echo "/usr/local/bin" >> $GITHUB_PATH
-          echo "$(npm bin -g)" >> $GITHUB_PATH
-          sgd --version  # Verify it works
+          npm install sfdx-git-delta
+          # # Manually add global npm bin to PATH so 'sgd' is found
+          # echo "/usr/local/bin" >> $GITHUB_PATH
+          # echo "$(npm bin -g)" >> $GITHUB_PATH
+          # sgd --version  # Verify it works
 
       - name: Generate delta
         run: |
