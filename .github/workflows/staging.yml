@@ -25,7 +25,7 @@ jobs:
 
       - name: Install sfdx-git-delta
         run: |
-          sudo npm install sfdx-git-delta@latest -g
+          sudo npm install sfdx-git-delta@latest
           # Manually add global npm bin to PATH so 'sgd' is found
           echo "/usr/local/bin" >> $GITHUB_PATH
           echo "$(npm bin -g)" >> $GITHUB_PATH
@@ -35,7 +35,7 @@ jobs:
         run: |
           git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
           git fetch --all
-          sgd generate --to HEAD --from HEAD~1 --output .sgd-output
+          npx sgd generate --to HEAD --from HEAD~1 --output .sgd-output
           cat .sgd-output/package/package.xml
 
       - name: Deploy delta
