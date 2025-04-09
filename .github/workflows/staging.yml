@@ -61,8 +61,8 @@ jobs:
           cat .sgd-output/package/package.xml
 
       - name: Print SF_TARGET_ORG
-        run: echo "SF_TARGET_ORG is: $SF_TARGET_ORG"
-
+        run: |
+          echo "SF_TARGET_ORG is: $SF_TARGET_ORG"
 
       - name: Deploy delta
         run: |
