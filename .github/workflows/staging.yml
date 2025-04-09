@@ -41,8 +41,8 @@ jobs:
       
       - name: Alias default org to $SF_TARGET_ORG
         run: |
-          USER=$(sf org display --json | jq -r '.result.username')
-          sf alias set $SF_TARGET_ORG $USER
+          ORG_ID=$(sf org display --json | jq -r '.result.orgId')
+          sf alias set $SF_TARGET_ORG $ORG_ID
 
       - name: Install sfdx-git-delta
         run: |
