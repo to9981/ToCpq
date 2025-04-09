@@ -1,58 +1,60 @@
-name: CICD Delta Change Detection
-
-on:
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: Select the target org
-        required: true
-        type: choice
-        options:
-          - ToCpq
-          - bar
-          - baz
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    env:
-      SFDX_DEFAULTUSERNAME: ${{ github.event.inputs.environment }}
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-
-      - name: Set up Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: "16"
-
-      - name: Set up SF CLI
-        uses: sfdx-actions/setup-sfdx@v1
-        with:
-          sfdx-auth-url: ${{ secrets.SFDX_INTEGRATION_URL }}
-
-      - name: Install sfdx-git-delta
-        run: |
-          echo y | sf plugins install sfdx-git-delta
-
-      - name: Generate delta
-        run: |
-          git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
-          git fetch --all
-          mkdir -p .sgd-output
-          sf sgd source delta --to "HEAD" --from "HEAD~1" --output-dir .sgd-output
-          cat .sgd-output/package/package.xml
-
-      - name: Deploy delta
-        run: |
-          sf project deploy preview \
-            --manifest .sgd-output/package/package.xml \
-            --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
-            --target-org $SFDX_DEFAULTUSERNAME
-          sf project deploy start \
-            --manifest .sgd-output/package/package.xml \
-            --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
-            --target-org $SFDX_DEFAULTUSERNAME
+name: CICD Delta Change Detection 
+ 
+on: 
+  workflow_dispatch: 
+    inputs: 
+      environment: 
+        description: Select the target org 
+        required: true 
+        type: choice 
+        options: 
+          - ToCpq 
+          - bar 
+          - baz 
+ 
+jobs: 
+  build: 
+    runs-on: ubuntu-latest 
+    env: 
+      SFDX_DEFAULTUSERNAME: ${{ github.event.inputs.environment  }} 
+ 
+    steps: 
+      - name: Check out repository 
+        uses: actions/checkout@v2 
+        with: 
+          fetch-depth: 0 
+ 
+      - name: Set up Node 
+        uses: actions/setup-node@v3 
+        with: 
+          node-version: "16" 
+ 
+      - name: Set up SF CLI 
+        uses: sfdx-actions/setup-sfdx@v1 
+        with: 
+          sfdx-auth-url: ${{ secrets.SFDX_INTEGRATION_URL }} 
+ 
+      - name: Install sfdx-git-delta 
+        run: | 
+          echo y | sf plugins install sfdx-git-delta 
+ 
+      - name: Generate delta 
+        run: | 
+          git config remote.origin.fetch  '+refs/heads/*:refs/remotes/origin/*' 
+          git fetch --all 
+          mkdir -p .sgd-output 
+          sf sgd source delta --to "HEAD" --from "HEAD~1" --output-dir .sgd-output 
+          cat .sgd-output/package/package.xml  
+        continue-on-error: false 
+ 
+      - name: Deploy delta 
+        run: | 
+          sf project deploy preview \ 
+            --manifest .sgd-output/package/package.xml  \ 
+            --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml  \ 
+            --target-org $SFDX_DEFAULTUSERNAME 
+          sf project deploy start \ 
+            --manifest .sgd-output/package/package.xml  \ 
+            --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml  \ 
+            --target-org $SFDX_DEFAULTUSERNAME 
+        continue-on-error: false 
