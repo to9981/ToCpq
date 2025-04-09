@@ -58,7 +58,7 @@ jobs:
 
       - name: Authenticate & alias
         run: |
-          echo "${{ secrets.TOCPQ_AUTH_URL }}" > auth.txt
+          echo "${{ secrets.SFDX_INTEGRATION_URL }}" > auth.txt
           sf org login sfdx-url -f auth.txt -a $SF_TARGET_ORG
           rm auth.txt
 
