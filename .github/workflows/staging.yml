@@ -63,7 +63,7 @@ jobs:
       - name: Deploy delta
         run: |
           sf project deploy preview \
-            --manifest .sgd-output/package/package.xml \
+            --source-dir .sgd-output/package/package.xml \
             --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
             --target-org $SF_TARGET_ORG
           sf project deploy start \
