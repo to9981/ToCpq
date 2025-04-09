@@ -27,26 +27,14 @@ jobs:
         with: 
           node-version: "18"
 
-      - name: Set up SF CLI and plugins
+      - name: Set up SF CLI 
+        uses: sfdx-actions/setup-sfdx@v1
+        with: 
+          sfdx-auth-url: ${{ secrets.ORG_URL }}
+
+      - name: Install sfdx-git-delta
         run: |
-          npm install -g @salesforce/cli
           echo 'y' | sf plugins install sfdx-git-delta
-
-      - name: Get secrets based on environment
-        id: get-secrets
-        run: |
-          case "${{ github.event.inputs.environment }}" in
-            "ToCpq") echo "auth_url=${{ secrets.SFDX_INTEGRATION_URL }}" >> $GITHUB_OUTPUT ;;
-            "bar") echo "auth_url=${{ secrets.BAR_AUTH_URL }}" >> $GITHUB_OUTPUT ;;
-            "baz") echo "auth_url=${{ secrets.BAZ_AUTH_URL }}" >> $GITHUB_OUTPUT ;;
-            *) echo "Unknown environment" && exit 1 ;;
-          esac
-
-      - name: Authenticate to Salesforce
-        run: |
-          echo "${{ steps.get-secrets.outputs.auth_url }}" > ./SFDX_AUTH_URL.txt
-          sf org login sfdx-url -f ./SFDX_AUTH_URL.txt -a deployorg
-          rm ./SFDX_AUTH_URL.txt
         
       - name: Generate delta 
         run: | 
@@ -60,15 +48,25 @@ jobs:
         run: | 
           # Check if package.xml has content beyond just the version
           if grep -q "<types>" .sgd-output/package/package.xml; then
+            # Deploy package changes
             sf project deploy preview \
               --manifest .sgd-output/package/package.xml \
-              --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
-              --target-org deployorg
+              --target-org ${{ github.event.inputs.environment }}
             
             sf project deploy start \
               --manifest .sgd-output/package/package.xml \
-              --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
-              --target-org deployorg
+              --target-org ${{ github.event.inputs.environment }}
+            
+            # Check and deploy destructive changes if they exist
+            if [ -f ".sgd-output/destructiveChanges/destructiveChanges.xml" ] && grep -q "<types>" .sgd-output/destructiveChanges/destructiveChanges.xml; then
+              echo "Deploying destructive changes..."
+              sf project deploy start \
+                --manifest .sgd-output/destructiveChanges/package.xml \
+                --destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
+                --target-org ${{ github.event.inputs.environment }}
+            else
+              echo "No destructive changes to deploy"
+            fi
           else
             echo "No changes to deploy in package.xml"
           fi
