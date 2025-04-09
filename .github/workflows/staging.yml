@@ -1,5 +1,5 @@
 name: CICD Delta Change Detection 
- 
+
 on: 
   workflow_dispatch: 
     inputs: 
@@ -11,50 +11,58 @@ on:
           - ToCpq 
           - bar 
           - baz 
- 
+
 jobs: 
   build: 
     runs-on: ubuntu-latest 
-    env: 
-      SFDX_DEFAULTUSERNAME: ${{ github.event.inputs.environment  }} 
- 
+    
     steps: 
       - name: Check out repository 
-        uses: actions/checkout@v2 
+        uses: actions/checkout@v4
         with: 
           fetch-depth: 0 
- 
+
       - name: Set up Node 
-        uses: actions/setup-node@v3 
+        uses: actions/setup-node@v4
         with: 
-          node-version: "16" 
- 
+          node-version: "18" # Updated to a more recent Node version
+
       - name: Set up SF CLI 
-        uses: sfdx-actions/setup-sfdx@v1 
-        with: 
-          sfdx-auth-url: ${{ secrets.SFDX_INTEGRATION_URL }} 
- 
-      - name: Install sfdx-git-delta 
-        run: | 
-          echo y | sf plugins install sfdx-git-delta 
- 
+        run: |
+          npm install -g @salesforce/cli
+          sf plugins install sfdx-git-delta --confirm
+
+      - name: Authenticate to Salesforce
+        run: |
+          echo "${{ secrets.SFDX_INTEGRATION_URL }}" > ./SFDX_AUTH_URL.txt
+          sf org login sfdx-url -f ./SFDX_AUTH_URL.txt -a integration
+        
       - name: Generate delta 
         run: | 
-          git config remote.origin.fetch  '+refs/heads/*:refs/remotes/origin/*' 
+          git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*' 
           git fetch --all 
           mkdir -p .sgd-output 
           sf sgd source delta --to "HEAD" --from "HEAD~1" --output-dir .sgd-output 
           cat .sgd-output/package/package.xml  
-        continue-on-error: false 
- 
+
+      - name: Map environment to org alias
+        id: org-mapping
+        run: |
+          case "${{ github.event.inputs.environment }}" in
+            "ToCpq") echo "target_org=ToCpq" >> $GITHUB_OUTPUT ;;
+            "bar") echo "target_org=barOrg" >> $GITHUB_OUTPUT ;;
+            "baz") echo "target_org=bazOrg" >> $GITHUB_OUTPUT ;;
+            *) echo "Unknown environment" && exit 1 ;;
+          esac
+
       - name: Deploy delta 
         run: | 
-          sf project deploy preview \ 
-            --manifest .sgd-output/package/package.xml  \ 
-            --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml  \ 
-            --target-org $SFDX_DEFAULTUSERNAME 
-          sf project deploy start \ 
-            --manifest .sgd-output/package/package.xml  \ 
-            --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml  \ 
-            --target-org $SFDX_DEFAULTUSERNAME 
-        continue-on-error: false 
+          sf project deploy preview \
+            --manifest .sgd-output/package/package.xml \
+            --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
+            --target-org ${{ steps.org-mapping.outputs.target_org }}
+          
+          sf project deploy start \
+            --manifest .sgd-output/package/package.xml \
+            --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
+            --target-org ${{ steps.org-mapping.outputs.target_org }}
