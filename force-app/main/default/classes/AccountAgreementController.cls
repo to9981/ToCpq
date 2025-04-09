@@ -11,7 +11,7 @@ public with sharing class AccountAgreementController {
 
   public PageReference saveAgreement() {
     try {
-      // Update the account record with the new values
+      // Update the account record with the new values...
       update acc;
 
       if (String.isNotBlank(signatureBase64)) {
