@@ -25,12 +25,12 @@ jobs:
       - name: Set up Node 
         uses: actions/setup-node@v4
         with: 
-          node-version: "18" # Updated to a more recent Node version
+          node-version: "18"
 
-      - name: Set up SF CLI 
+      - name: Set up SF CLI and plugins
         run: |
           npm install -g @salesforce/cli
-          sf plugins install sfdx-git-delta --confirm
+          echo 'y' | sf plugins install sfdx-git-delta
 
       - name: Authenticate to Salesforce
         run: |
