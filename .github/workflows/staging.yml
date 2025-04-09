@@ -41,7 +41,7 @@ jobs:
       - name: Set up SF CLI
         uses: sfdx-actions/setup-sfdx@v1
         with:
-          sfdx-auth-url: ${{ secrets.ORG_URL }}
+          sfdx-auth-url: ${{ secrets.SFDX_INTEGRATION_URL }}
 
       - name: Install sfdx-git-delta
         run: |
