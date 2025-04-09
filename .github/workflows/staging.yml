@@ -8,8 +8,9 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        type: environment
         description: Select the target org
+        required: true
+        type: choice
         options:
           - ToCpq
           - bar
@@ -36,6 +37,11 @@ jobs:
         uses: sfdx-actions/setup-sfdx@v1
         with:
           sfdx-auth-url: ${{ secrets.SFDX_INTEGRATION_URL }}
+      
+      - name: Alias default org to $SF_TARGET_ORG
+        run: |
+          USER=$(sf org display --json | jq -r '.result.username')
+          sf alias set $SF_TARGET_ORG $USER
 
       - name: Install sfdx-git-delta
         run: |
