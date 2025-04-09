@@ -69,4 +69,4 @@ jobs:
           sf project deploy start \
             --manifest .sgd-output/package/package.xml \
             --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
-            --target-org $SF_TARGET_ORG
+            #--target-org $SF_TARGET_ORG
