@@ -32,10 +32,21 @@ jobs:
           npm install -g @salesforce/cli
           echo 'y' | sf plugins install sfdx-git-delta
 
+      - name: Get secrets based on environment
+        id: get-secrets
+        run: |
+          case "${{ github.event.inputs.environment }}" in
+            "ToCpq") echo "auth_url=${{ secrets.TOCPQ_AUTH_URL }}" >> $GITHUB_OUTPUT ;;
+            "bar") echo "auth_url=${{ secrets.BAR_AUTH_URL }}" >> $GITHUB_OUTPUT ;;
+            "baz") echo "auth_url=${{ secrets.BAZ_AUTH_URL }}" >> $GITHUB_OUTPUT ;;
+            *) echo "Unknown environment" && exit 1 ;;
+          esac
+
       - name: Authenticate to Salesforce
         run: |
-          echo "${{ secrets.SFDX_INTEGRATION_URL }}" > ./SFDX_AUTH_URL.txt
-          sf org login sfdx-url -f ./SFDX_AUTH_URL.txt -a integration
+          echo "${{ steps.get-secrets.outputs.auth_url }}" > ./SFDX_AUTH_URL.txt
+          sf org login sfdx-url -f ./SFDX_AUTH_URL.txt -a deployorg
+          rm ./SFDX_AUTH_URL.txt
         
       - name: Generate delta 
         run: | 
@@ -45,24 +56,19 @@ jobs:
           sf sgd source delta --to "HEAD" --from "HEAD~1" --output-dir .sgd-output 
           cat .sgd-output/package/package.xml  
 
-      - name: Map environment to org alias
-        id: org-mapping
-        run: |
-          case "${{ github.event.inputs.environment }}" in
-            "ToCpq") echo "target_org=ToCpq" >> $GITHUB_OUTPUT ;;
-            "bar") echo "target_org=barOrg" >> $GITHUB_OUTPUT ;;
-            "baz") echo "target_org=bazOrg" >> $GITHUB_OUTPUT ;;
-            *) echo "Unknown environment" && exit 1 ;;
-          esac
-
       - name: Deploy delta 
         run: | 
-          sf project deploy preview \
-            --manifest .sgd-output/package/package.xml \
-            --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
-            --target-org ${{ steps.org-mapping.outputs.target_org }}
-          
-          sf project deploy start \
-            --manifest .sgd-output/package/package.xml \
-            --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
-            --target-org ${{ steps.org-mapping.outputs.target_org }}
+          # Check if package.xml has content beyond just the version
+          if grep -q "<types>" .sgd-output/package/package.xml; then
+            sf project deploy preview \
+              --manifest .sgd-output/package/package.xml \
+              --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
+              --target-org deployorg
+            
+            sf project deploy start \
+              --manifest .sgd-output/package/package.xml \
+              --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
+              --target-org deployorg
+          else
+            echo "No changes to deploy in package.xml"
+          fi
