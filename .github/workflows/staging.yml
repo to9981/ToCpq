@@ -37,15 +37,12 @@ jobs:
         uses: sfdx-actions/setup-sfdx@v1
         with:
           sfdx-auth-url: ${{ secrets.SFDX_INTEGRATION_URL }}
-          #alias: ${{ github.event.inputs.environment }}
-      
-      - name: Alias default org to $SF_TARGET_ORG
+
+      - name: Alias target org
         run: |
-          ORG_ID=$(sf org display \
-            --target-org $SF_TARGET_ORG \
-            --verbose --json \
-            | jq -r '.result.orgId')
-          sf alias set $SF_TARGET_ORG $ORG_ID
+          USERNAME=$(sf org display --json --verbose | jq -r '.result.username')
+          sf alias set $SF_TARGET_ORG $USERNAME
+
 
       - name: Install sfdx-git-delta
         run: |
