@@ -62,7 +62,6 @@ jobs:
           sf org login sfdx-url -f auth.txt -a $SF_TARGET_ORG
           rm auth.txt
 
-
       - name: Generate delta
         run: |
           git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
@@ -84,4 +83,4 @@ jobs:
           sf project deploy start \
             --manifest .sgd-output/package/package.xml \
             --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
-            --target-org $SF_TARGET_ORG
+            #--target-org $SF_TARGET_ORG
