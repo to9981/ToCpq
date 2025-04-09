@@ -3,11 +3,29 @@ name: CICD Delta Change Detection
 on:
   push:
     branches:
+      - dev
       - dev2
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: environment
+        description: Select the environment
+      boolean:
+        type: boolean
+        description: True or False
+      choice:
+        type: choice
+        description: Make a choice
+        options:
+          - foo
+          - bar
+          - baz
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      SF_TARGET_ORG: ${{ github.event.inputs.environment }}
 
     steps:
       - name: Check out repository
@@ -44,7 +62,11 @@ jobs:
 
       - name: Deploy delta
         run: |
+          sf project deploy preview \
+            --manifest .sgd-output/package/package.xml \
+            --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
+            --target-org $SF_TARGET_ORG
           sf project deploy start \
             --manifest .sgd-output/package/package.xml \
             --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
-            # --target-org ToCpq
+            --target-org $SF_TARGET_ORG
