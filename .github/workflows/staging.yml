@@ -52,6 +52,15 @@ jobs:
           # echo "$(npm bin -g)" >> $GITHUB_PATH
           # sgd --version  # Verify it works
 
+      - name: Install jq
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Alias target org
+        run: |
+          USER=$(sf org display --json | jq -r '.result.username')
+          sf alias set $SF_TARGET_ORG $USER
+
       - name: Generate delta
         run: |
           git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
