@@ -37,6 +37,7 @@ jobs:
         uses: sfdx-actions/setup-sfdx@v1
         with:
           sfdx-auth-url: ${{ secrets.SFDX_INTEGRATION_URL }}
+          alias: ${{ github.event.inputs.environment }}
       
       - name: Alias default org to $SF_TARGET_ORG
         run: |
@@ -63,7 +64,7 @@ jobs:
       - name: Deploy delta
         run: |
           sf project deploy preview \
-            --source-dir .sgd-output/package/package.xml \
+            --manifest .sgd-output/package/package.xml \
             --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
             --target-org $SF_TARGET_ORG
           sf project deploy start \
