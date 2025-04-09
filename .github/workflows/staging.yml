@@ -1,10 +1,6 @@
 name: CICD Delta Change Detection
 
 on:
-  # push:
-  #   branches:
-  #     - dev
-  #     - dev2
   workflow_dispatch:
     inputs:
       environment:
@@ -20,13 +16,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      SF_TARGET_ORG: ${{ github.event.inputs.environment }}
+      SFDX_DEFAULTUSERNAME: ${{ github.event.inputs.environment }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v2
         with:
-          fetch-depth: 0 # Fetch all history for all branches and tags
+          fetch-depth: 0
 
       - name: Set up Node
         uses: actions/setup-node@v3
@@ -38,20 +34,9 @@ jobs:
         with:
           sfdx-auth-url: ${{ secrets.SFDX_INTEGRATION_URL }}
 
-      - name: Alias target org
-        run: |
-          USERNAME=$(sf org display --json --verbose | jq -r '.result.username')
-          sf alias set $SF_TARGET_ORG $USERNAME
-
-
       - name: Install sfdx-git-delta
         run: |
           echo y | sf plugins install sfdx-git-delta
-          # npm install sfdx-git-delta
-          # # Manually add global npm bin to PATH so 'sgd' is found
-          # echo "/usr/local/bin" >> $GITHUB_PATH
-          # echo "$(npm bin -g)" >> $GITHUB_PATH
-          # sgd --version  # Verify it works
 
       - name: Generate delta
         run: |
@@ -66,8 +51,8 @@ jobs:
           sf project deploy preview \
             --manifest .sgd-output/package/package.xml \
             --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
-            --target-org $SF_TARGET_ORG
+            --target-org $SFDX_DEFAULTUSERNAME
           sf project deploy start \
             --manifest .sgd-output/package/package.xml \
             --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
-            --target-org $SF_TARGET_ORG
+            --target-org $SFDX_DEFAULTUSERNAME
