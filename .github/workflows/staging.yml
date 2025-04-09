@@ -60,6 +60,10 @@ jobs:
           sf sgd source delta --to "HEAD" --from "HEAD~1" --output-dir .sgd-output
           cat .sgd-output/package/package.xml
 
+      - name: Print SF_TARGET_ORG
+        run: echo "SF_TARGET_ORG is: $SF_TARGET_ORG"
+
+
       - name: Deploy delta
         run: |
           # sf project deploy preview \
@@ -69,4 +73,4 @@ jobs:
           sf project deploy start \
             --manifest .sgd-output/package/package.xml \
             --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
-            #--target-org $SF_TARGET_ORG
+            --target-org $SF_TARGET_ORG
