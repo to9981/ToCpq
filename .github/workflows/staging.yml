@@ -7,15 +7,10 @@ on:
   #     - dev2
   workflow_dispatch:
     inputs:
-      environment:
-        type: environment
-        description: Select the environment
-      boolean:
-        type: boolean
-        description: True or False
-      choice:
+      target_org:
+        description: Select the target org
+        required: true
         type: choice
-        description: Make a choice
         options:
           - ToCpq
           - bar
@@ -25,7 +20,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      SF_TARGET_ORG: ${{ github.event.inputs.environment }}
+      SF_TARGET_ORG: ${{ github.event.inputs.target_org }}
 
     steps:
       - name: Check out repository
@@ -41,7 +36,7 @@ jobs:
       - name: Set up SF CLI
         uses: sfdx-actions/setup-sfdx@v1
         with:
-          sfdx-auth-url: ${{ secrets.SFDX_INTEGRATION_URL }}
+          sfdx-auth-url: ${{ secrets.ORG_URL }}
 
       - name: Install sfdx-git-delta
         run: |
