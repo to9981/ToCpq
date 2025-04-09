@@ -51,10 +51,17 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Alias target org
+      # - name: Alias target org
+      #   run: |
+      #     USER=$(sf org display --json | jq -r '.result.username')
+      #     sf alias set $SF_TARGET_ORG $USER
+
+      - name: Authenticate & alias
         run: |
-          USER=$(sf org display --json | jq -r '.result.username')
-          sf alias set $SF_TARGET_ORG $USER
+          echo "${{ secrets.TOCPQ_AUTH_URL }}" > auth.txt
+          sf org login sfdx-url -f auth.txt -a $SF_TARGET_ORG
+          rm auth.txt
+
 
       - name: Generate delta
         run: |
