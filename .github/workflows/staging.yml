@@ -36,7 +36,7 @@ jobs:
         id: get-secrets
         run: |
           case "${{ github.event.inputs.environment }}" in
-            "ToCpq") echo "auth_url=${{ secrets.ORG_URL }}" >> $GITHUB_OUTPUT ;;
+            "ToCpq") echo "auth_url=${{ secrets.SFDX_INTEGRATION_URL }}" >> $GITHUB_OUTPUT ;;
             "bar") echo "auth_url=${{ secrets.BAR_AUTH_URL }}" >> $GITHUB_OUTPUT ;;
             "baz") echo "auth_url=${{ secrets.BAZ_AUTH_URL }}" >> $GITHUB_OUTPUT ;;
             *) echo "Unknown environment" && exit 1 ;;
