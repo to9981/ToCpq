@@ -35,8 +35,25 @@ jobs:
 
       - name: Set up SF CLI
         uses: sfdx-actions/setup-sfdx@v1
-        with:
-          sfdx-auth-url: ${{ secrets.SFDX_INTEGRATION_URL }}
+
+      - name: Authenticate & set default org
+        run: |
+          # Create secure auth file
+          touch auth.txt && chmod 600 auth.txt
+          echo "${{ secrets.SFDX_INTEGRATION_URL }}" > auth.txt
+
+          # Login and set as default org
+          sf org login sfdx-url -f auth.txt -a $SF_TARGET_ORG --set-default || exit 1
+          rm -f auth.txt
+
+          # Verify default org is set correctly
+          DEFAULT_ORG=$(sf config get target-org --json | jq -r '.result[0].value')
+          if [ "$DEFAULT_ORG" != "$SF_TARGET_ORG" ]; then
+            echo "::error::Default org ($DEFAULT_ORG) does not match target org ($SF_TARGET_ORG)"
+            exit 1
+          fi
+
+          echo "Successfully authenticated and set $SF_TARGET_ORG as default org"
 
       - name: Install sfdx-git-delta
         run: |
@@ -50,17 +67,6 @@ jobs:
       - name: Install jq
         run: |
           sudo apt-get update && sudo apt-get install -y jq
-
-      # - name: Alias target org
-      #   run: |
-      #     USER=$(sf org display --json | jq -r '.result.username')
-      #     sf alias set $SF_TARGET_ORG $USER
-
-      - name: Authenticate & alias
-        run: |
-          echo "${{ secrets.SFDX_INTEGRATION_URL }}" > auth.txt
-          sf org login sfdx-url -f auth.txt -a $SF_TARGET_ORG
-          rm auth.txt
 
       - name: Generate delta
         run: |
