@@ -11,11 +11,11 @@ public with sharing class AccountAgreementController {
 
   public PageReference saveAgreement() {
     try {
-      // Update the account record with the new values...
+      // Update the account record with the new values
       update acc;
 
       if (String.isNotBlank(signatureBase64)) {
-        // Convert base64 signature to Blob
+        // Convert base64 signature to Blob.
         Blob signatureBlob = EncodingUtil.base64Decode(
           signatureBase64.substring(signatureBase64.indexOf(',') + 1)
         );
@@ -59,7 +59,7 @@ public with sharing class AccountAgreementController {
       ApexPages.addMessage(
         new ApexPages.Message(
           ApexPages.Severity.ERROR,
-          'Error:: ' + e.getMessage()
+          'Error: ' + e.getMessage()
         )
       );
     }
