@@ -1,72 +1,92 @@
-name: CICD Delta Change Detection 
+name: CICD Delta Change Detection
 
-on: 
-  workflow_dispatch: 
-    inputs: 
-      environment: 
-        description: Select the target org 
-        required: true 
-        type: choice 
-        options: 
-          - ToCpq 
-          - bar 
-          - baz 
+on:
+  # push:
+  #   branches:
+  #     - dev
+  #     - dev2
+  workflow_dispatch:
+    inputs:
+      target_org:
+        description: Select the target org
+        required: true
+        type: choice
+        options:
+          - ToCpq
+          - bar
+          - baz
 
-jobs: 
-  build: 
-    runs-on: ubuntu-latest 
-    
-    steps: 
-      - name: Check out repository 
-        uses: actions/checkout@v4
-        with: 
-          fetch-depth: 0 
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      SF_TARGET_ORG: ${{ github.event.inputs.target_org }}
 
-      - name: Set up Node 
-        uses: actions/setup-node@v4
-        with: 
-          node-version: "18"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # Fetch all history for all branches and tags
 
-      - name: Set up SF CLI 
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18.x"
+
+      - name: Set up SF CLI
         uses: sfdx-actions/setup-sfdx@v1
-        with: 
-          sfdx-auth-url: ${{ secrets.ORG_URL }}
+
+      - name: Authenticate & set default org
+        run: |
+          # Create secure auth file
+          touch auth.txt && chmod 600 auth.txt
+          echo "${{ secrets.SFDX_INTEGRATION_URL }}" > auth.txt
+
+          # Login and set as default org
+          sf org login sfdx-url -f auth.txt -a $SF_TARGET_ORG --set-default || exit 1
+          rm -f auth.txt
+
+          # Verify default org is set correctly
+          DEFAULT_ORG=$(sf config get target-org --json | jq -r '.result[0].value')
+          if [ "$DEFAULT_ORG" != "$SF_TARGET_ORG" ]; then
+            echo "::error::Default org ($DEFAULT_ORG) does not match target org ($SF_TARGET_ORG)"
+            exit 1
+          fi
+
+          echo "Successfully authenticated and set $SF_TARGET_ORG as default org"
 
       - name: Install sfdx-git-delta
         run: |
-          echo 'y' | sf plugins install sfdx-git-delta
-        
-      - name: Generate delta 
-        run: | 
-          git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*' 
-          git fetch --all 
-          mkdir -p .sgd-output 
-          sf sgd source delta --to "HEAD" --from "HEAD~1" --output-dir .sgd-output 
-          cat .sgd-output/package/package.xml  
+          echo y | sf plugins install sfdx-git-delta
+          # npm install sfdx-git-delta
+          # # Manually add global npm bin to PATH so 'sgd' is found
+          # echo "/usr/local/bin" >> $GITHUB_PATH
+          # echo "$(npm bin -g)" >> $GITHUB_PATH
+          # sgd --version  # Verify it works
 
-      - name: Deploy delta 
-        run: | 
-          # Check if package.xml has content beyond just the version
-          if grep -q "<types>" .sgd-output/package/package.xml; then
-            # Deploy package changes
-            sf project deploy preview \
-              --manifest .sgd-output/package/package.xml \
-              --target-org ${{ github.event.inputs.environment }}
-            
-            sf project deploy start \
-              --manifest .sgd-output/package/package.xml \
-              --target-org ${{ github.event.inputs.environment }}
-            
-            # Check and deploy destructive changes if they exist
-            if [ -f ".sgd-output/destructiveChanges/destructiveChanges.xml" ] && grep -q "<types>" .sgd-output/destructiveChanges/destructiveChanges.xml; then
-              echo "Deploying destructive changes..."
-              sf project deploy start \
-                --manifest .sgd-output/destructiveChanges/package.xml \
-                --destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
-                --target-org ${{ github.event.inputs.environment }}
-            else
-              echo "No destructive changes to deploy"
-            fi
-          else
-            echo "No changes to deploy in package.xml"
-          fi
+      - name: Install jq
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Generate delta
+        run: |
+          git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
+          git fetch --all
+          mkdir -p .sgd-output
+          sf sgd source delta --to "HEAD" --from "HEAD~1" --output-dir .sgd-output
+          cat .sgd-output/package/package.xml
+
+      - name: Print SF_TARGET_ORG
+        run: |
+          echo "SF_TARGET_ORG is: $SF_TARGET_ORG"
+
+      - name: Deploy delta
+        run: |
+          # sf project deploy preview \
+          #   --manifest .sgd-output/package/package.xml \
+          #   --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
+          #   --target-org $SF_TARGET_ORG
+          sf project deploy start \
+            --manifest .sgd-output/package/package.xml \
+            --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml \
+            #--target-org $SF_TARGET_ORG
