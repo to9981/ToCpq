@@ -1,0 +1,46 @@
+# .github/workflows/uat-build-and-merge.yml
+name: UAT Build & Merge
+
+on:
+  workflow_run:
+    workflows: ["Feature CI"]
+    types: [completed]
+
+jobs:
+  build-package:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      SFDX_HUB_ALIAS: devhub
+      PACKAGE_NAME: MyUnlockedPkg
+    steps:
+      - uses: actions/checkout@v3
+      - uses: sfdx-actions/setup-sfdx@v1
+      - name: Authenticate to Dev Hub
+        run: |
+          echo "${{ secrets.SFDX_DEVHUB_URL }}" > hub.txt
+          sf org login sfdx-url -f hub.txt -a $SFDX_HUB_ALIAS
+          rm hub.txt
+      - name: Create & promote package version
+        run: |
+          sf package version create \
+            --package $PACKAGE_NAME \
+            --installationkeybypass \
+            --setalias latest \
+            --wait 20 \
+            --targetdevhubusername $SFDX_HUB_ALIAS \
+            --json > version.json
+          sf package version promote --package-version-id $(jq -r '.result.Id' version.json) --targetdevhubusername $SFDX_HUB_ALIAS
+
+  merge-pr:
+    needs: build-package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Merge PR into main
+        uses: peter-evans/merge-pull-request@v4
+        with:
+          pull-request-number: ${{ github.event.workflow_run.pull_requests[0].number }}
+          base: main
+          merge-method: merge
+          delete-branch: true
