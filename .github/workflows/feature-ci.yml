@@ -1,0 +1,79 @@
+# .github/workflows/feature-ci.yml
+name: Feature CI
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - dev2
+      - 'feature/**'
+
+jobs:
+  deploy-qa:
+    runs-on: ubuntu-latest
+    env:
+      SF_TARGET_ORG: qa-sandbox
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+        with: { fetch-depth: 0 }
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with: { node-version: '18.x' }
+      - name: Set up SF CLI
+        uses: sfdx-actions/setup-sfdx@v1
+      - name: Authenticate & set default org
+        run: |
+          echo "${{ secrets.SFDX_INTEGRATION_URL }}" > auth.txt && chmod 600 auth.txt
+          sf org login sfdx-url -f auth.txt -a $SF_TARGET_ORG --set-default
+          rm auth.txt
+      - name: Install sfdx-git-delta
+        run: |
+          echo y | sf plugins install sfdx-git-delta
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Generate delta
+        run: |
+          git fetch --all
+          mkdir -p .sgd-output
+          sf sgd source delta --to HEAD --from HEAD~1 --output-dir .sgd-output
+      - name: Deploy delta to QA
+        run: |
+          sf project deploy start \
+            --manifest .sgd-output/package/package.xml \
+            --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml
+
+  deploy-uat:
+    needs: deploy-qa
+    runs-on: ubuntu-latest
+    environment: uat
+    env:
+      SF_TARGET_ORG: uat-sandbox
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+        with: { fetch-depth: 0 }
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with: { node-version: '18.x' }
+      - name: Set up SF CLI
+        uses: sfdx-actions/setup-sfdx@v1
+      - name: Authenticate & set default org
+        run: |
+          echo "${{ secrets.SFDX_INTEGRATION_URL }}" > auth.txt && chmod 600 auth.txt
+          sf org login sfdx-url -f auth.txt -a $SF_TARGET_ORG --set-default
+          rm auth.txt
+      - name: Install sfdx-git-delta
+        run: echo y | sf plugins install sfdx-git-delta
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Generate delta
+        run: |
+          git fetch --all
+          mkdir -p .sgd-output
+          sf sgd source delta --to HEAD --from HEAD~1 --output-dir .sgd-output
+      - name: Deploy delta to UAT
+        run: |
+          sf project deploy start \
+            --manifest .sgd-output/package/package.xml \
+            --post-destructive-changes .sgd-output/destructiveChanges/destructiveChanges.xml

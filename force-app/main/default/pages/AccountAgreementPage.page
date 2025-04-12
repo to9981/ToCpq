@@ -1,148 +1,159 @@
 <apex:page>
-    <apex:form>
-        <apex:outputLabel value="I Agree" for="booleanField" />
-        <input type="checkbox" id="booleanField" />
-        <div>
-            <canvas id="signatureCanvas" width="400" height="200" style="border: 1px solid black;"></canvas>
-            <br />
-            <button onclick="clearCanvas(); return false;">Clear Signature</button>
-        </div>
-        <button onclick="saveAgreement(); return false;">Save Agreement</button>
-        <div>hello test</div>
-    </apex:form>
+  <apex:form>
+    <apex:outputLabel value="I Agree" for="booleanField" />
+    <input type="checkbox" id="booleanField" />
+    <div>
+      <canvas
+        id="signatureCanvas"
+        width="400"
+        height="200"
+        style="border: 1px solid black"
+      ></canvas>
+      <br />
+      <button onclick="clearCanvas(); return false;">Clear Signature</button>
+    </div>
+    <button onclick="saveAgreement(); return false;">Save Agreement</button>
+    <div>hello test10</div>
+  </apex:form>
 
-    <script>
-        var canvas = document.getElementById('signatureCanvas');
-        var ctx = canvas.getContext('2d');
-        var isDrawing = false;
-        var lastX = 0;
-        var lastY = 0;
+  <script>
+    var canvas = document.getElementById("signatureCanvas");
+    var ctx = canvas.getContext("2d");
+    var isDrawing = false;
+    var lastX = 0;
+    var lastY = 0;
 
-        canvas.addEventListener('mousedown', function (e) {
-            isDrawing = true;
-            [lastX, lastY] = [e.offsetX, e.offsetY];
+    canvas.addEventListener("mousedown", function (e) {
+      isDrawing = true;
+      [lastX, lastY] = [e.offsetX, e.offsetY];
+    });
+
+    canvas.addEventListener("mousemove", function (e) {
+      if (isDrawing) {
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(e.offsetX, e.offsetY);
+        ctx.stroke();
+        [lastX, lastY] = [e.offsetX, e.offsetY];
+      }
+    });
+
+    canvas.addEventListener("mouseup", function () {
+      isDrawing = false;
+    });
+
+    canvas.addEventListener("mouseout", function () {
+      isDrawing = false;
+    });
+
+    function clearCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function saveAgreement() {
+      // Get the account ID from the URL
+      var accountId = "{!$CurrentPage.parameters.id}";
+      // Get the checkbox value
+      var iAgree = document.getElementById("booleanField").checked;
+      // Get the signature as base64
+      var base64Data = canvas.toDataURL("image/png");
+      var signatureBlob = dataURItoBlob(base64Data);
+
+      // Update the account record
+      updateAccount(accountId, iAgree)
+        .then(() => {
+          // Upload the signature as a ContentVersion
+          return uploadSignature(accountId, signatureBlob);
+        })
+        .then(() => {
+          alert("Agreement saved successfully.");
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+          alert("Error saving agreement: " + error.message);
         });
+    }
 
-        canvas.addEventListener('mousemove', function (e) {
-            if (isDrawing) {
-                ctx.beginPath();
-                ctx.moveTo(lastX, lastY);
-                ctx.lineTo(e.offsetX, e.offsetY);
-                ctx.stroke();
-                [lastX, lastY] = [e.offsetX, e.offsetY];
+    function updateAccount(accountId, iAgree) {
+      return new Promise((resolve, reject) => {
+        var url = "/services/data/v57.0/sobjects/Account/" + accountId;
+        var data = {
+          I_Agree__c: iAgree
+        };
+        var xhr = new XMLHttpRequest();
+        xhr.open("PATCH", url, true);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.setRequestHeader("Authorization", "Bearer {!$Api.Session_ID}");
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4) {
+            if (xhr.status === 204) {
+              resolve();
+            } else {
+              reject(new Error("Error updating account: " + xhr.responseText));
             }
-        });
+          }
+        };
+        xhr.send(JSON.stringify(data));
+      });
+    }
 
-        canvas.addEventListener('mouseup', function () {
-            isDrawing = false;
-        });
+    function uploadSignature(accountId, blob) {
+      return new Promise((resolve, reject) => {
+        var boundary = "---------------------------" + Date.now().toString(16);
+        var contentType = "multipart/form-data; boundary=" + boundary;
 
-        canvas.addEventListener('mouseout', function () {
-            isDrawing = false;
-        });
+        var metadata = {
+          Title: "Account Signature -" + accountId,
+          PathOnClient: "account_signature.png",
+          FirstPublishLocationId: accountId
+        };
 
-        function clearCanvas() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
+        var body = "--" + boundary + "\r\n";
+        body += 'Content-Disposition: form-data; name="entity_content";\r\n';
+        body += "Content-Type: application/json\r\n\r\n";
+        body += JSON.stringify(metadata) + "\r\n";
 
-        function saveAgreement() {
-            // Get the account ID from the URL
-            var accountId = "{!$CurrentPage.parameters.id}";
-            // Get the checkbox value
-            var iAgree = document.getElementById('booleanField').checked;
-            // Get the signature as base64
-            var base64Data = canvas.toDataURL('image/png');
-            var signatureBlob = dataURItoBlob(base64Data);
+        body += "--" + boundary + "\r\n";
+        body +=
+          'Content-Disposition: form-data; name="VersionData"; filename="account_signature.png"\r\n';
+        body += "Content-Type: image/png\r\n\r\n";
 
-            // Update the account record
-            updateAccount(accountId, iAgree).then(() => {
-                // Upload the signature as a ContentVersion
-                return uploadSignature(accountId, signatureBlob);
-            }).then(() => {
-                alert('Agreement saved successfully.');
-            }).catch((error) => {
-                console.error('Error:', error);
-                alert('Error saving agreement: ' + error.message);
-            });
-        }
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "/services/data/v57.0/sobjects/ContentVersion", true);
+        xhr.setRequestHeader("Authorization", "Bearer {!$Api.Session_ID}");
+        xhr.setRequestHeader("Content-Type", contentType);
 
-        function updateAccount(accountId, iAgree) {
-            return new Promise((resolve, reject) => {
-                var url = "/services/data/v57.0/sobjects/Account/" + accountId;
-                var data = {
-                    "I_Agree__c": iAgree
-                };
-                var xhr = new XMLHttpRequest();
-                xhr.open('PATCH', url, true);
-                xhr.setRequestHeader('Content-Type', 'application/json');
-                xhr.setRequestHeader('Authorization', 'Bearer {!$Api.Session_ID}');
-                xhr.onreadystatechange = function () {
-                    if (xhr.readyState === 4) {
-                        if (xhr.status === 204) {
-                            resolve();
-                        } else {
-                            reject(new Error('Error updating account: ' + xhr.responseText));
-                        }
-                    }
-                };
-                xhr.send(JSON.stringify(data));
-            });
-        }
-
-        function uploadSignature(accountId, blob) {
-            return new Promise((resolve, reject) => {
-                var boundary = '---------------------------' + Date.now().toString(16);
-                var contentType = 'multipart/form-data; boundary=' + boundary;
-
-                var metadata = {
-                    Title: 'Account Signature -' + accountId,
-                    PathOnClient: 'account_signature.png',
-                    FirstPublishLocationId: accountId
-                };
-
-                var body = '--' + boundary + '\r\n';
-                body += 'Content-Disposition: form-data; name="entity_content";\r\n';
-                body += 'Content-Type: application/json\r\n\r\n';
-                body += JSON.stringify(metadata) + '\r\n';
-
-                body += '--' + boundary + '\r\n';
-                body += 'Content-Disposition: form-data; name="VersionData"; filename="account_signature.png"\r\n';
-                body += 'Content-Type: image/png\r\n\r\n';
-
-                var xhr = new XMLHttpRequest();
-                xhr.open('POST', '/services/data/v57.0/sobjects/ContentVersion', true);
-                xhr.setRequestHeader('Authorization', 'Bearer {!$Api.Session_ID}');
-                xhr.setRequestHeader('Content-Type', contentType);
-
-                xhr.onreadystatechange = function () {
-                    if (xhr.readyState === 4) {
-                        if (xhr.status === 201) {
-                            resolve();
-                        } else {
-                            reject(new Error('Error uploading signature: ' + xhr.responseText));
-                        }
-                    }
-                };
-
-                var reader = new FileReader();
-                reader.onload = function (e) {
-                    var binaryData = e.target.result;
-                    var finalBody = body + binaryData + '\r\n--' + boundary + '--';
-                    xhr.send(finalBody);
-                };
-                reader.readAsBinaryString(blob);
-            });
-        }
-
-        function dataURItoBlob(dataURI) {
-            var byteString = atob(dataURI.split(',')[1]);
-            var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
-            var ab = new ArrayBuffer(byteString.length);
-            var ia = new Uint8Array(ab);
-            for (var i = 0; i < byteString.length; i++) {
-                ia[i] = byteString.charCodeAt(i);
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4) {
+            if (xhr.status === 201) {
+              resolve();
+            } else {
+              reject(
+                new Error("Error uploading signature: " + xhr.responseText)
+              );
             }
-            return new Blob([ab], { type: mimeString });
-        }
-    </script>
+          }
+        };
+
+        var reader = new FileReader();
+        reader.onload = function (e) {
+          var binaryData = e.target.result;
+          var finalBody = body + binaryData + "\r\n--" + boundary + "--";
+          xhr.send(finalBody);
+        };
+        reader.readAsBinaryString(blob);
+      });
+    }
+
+    function dataURItoBlob(dataURI) {
+      var byteString = atob(dataURI.split(",")[1]);
+      var mimeString = dataURI.split(",")[0].split(":")[1].split(";")[0];
+      var ab = new ArrayBuffer(byteString.length);
+      var ia = new Uint8Array(ab);
+      for (var i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+      }
+      return new Blob([ab], { type: mimeString });
+    }
+  </script>
 </apex:page>
