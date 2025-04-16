@@ -1,4 +1,4 @@
-# .github/workflows/feature-ci.yml
+# .github/workflows/feature-ci.yml cicd
 name: Feature CI
 
 on:
@@ -6,7 +6,7 @@ on:
     branches:
       - dev
       - dev2
-      - 'feature/**'
+      - "feature/**"
 
 jobs:
   deploy-qa:
@@ -19,7 +19,7 @@ jobs:
         with: { fetch-depth: 0 }
       - name: Set up Node
         uses: actions/setup-node@v3
-        with: { node-version: '18.x' }
+        with: { node-version: "18.x" }
       - name: Set up SF CLI
         uses: sfdx-actions/setup-sfdx@v1
       - name: Authenticate & set default org
@@ -55,7 +55,7 @@ jobs:
         with: { fetch-depth: 0 }
       - name: Set up Node
         uses: actions/setup-node@v3
-        with: { node-version: '18.x' }
+        with: { node-version: "18.x" }
       - name: Set up SF CLI
         uses: sfdx-actions/setup-sfdx@v1
       - name: Authenticate & set default org
