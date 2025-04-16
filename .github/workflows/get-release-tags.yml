@@ -1,4 +1,4 @@
-name: Get Release Tags
+name: Gather Release Tags
 on:
   workflow_dispatch:
 
@@ -14,10 +14,13 @@ jobs:
       - name: Verify GH_TOKEN
         run: |
           if [ -z "$GH_TOKEN" ]; then
-            echo "🚨 GH_TOKEN is not set!" && exit 1
+            echo "🚨 GH_TOKEN is not set!" >&2
+            exit 1
           fi
+          echo "✅ GH_TOKEN is available"
 
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
