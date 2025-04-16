@@ -1,4 +1,5 @@
-name: Gather Release Tags
+# This workflow collects all tags between the last final release and the latest prerelease
+name: Get Release Tags
 on:
   workflow_dispatch:
 
@@ -6,21 +7,10 @@ permissions:
   contents: write
 
 jobs:
-  gather-tags:
+  update-release:
     runs-on: ubuntu-latest
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Verify GH_TOKEN
-        run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "🚨 GH_TOKEN is not set!" >&2
-            exit 1
-          fi
-          echo "✅ GH_TOKEN is available"
-
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -28,20 +18,15 @@ jobs:
         run: git fetch --tags
 
       - name: Get latest final release tag
-        run: |
-          LAST_FINAL=$(gh release list --exclude-prerelease --limit 1 --json tagName --jq '.[0].tagName')
-          echo "LAST_FINAL=$LAST_FINAL" >> $GITHUB_ENV
+        run: echo "LAST_FINAL=$(gh release list --exclude-prerelease --limit 1 --json tagName --jq '.[0].tagName')" >> $GITHUB_ENV
 
       - name: Get first tag after last final release
         run: |
-          FIRST_TAG=$(git tag --sort=version:refname \
-            | awk -v last="$LAST_FINAL" 'found{print; exit} $0==last{found=1}')
-          echo "FIRST_TAG=$FIRST_TAG" >> $GITHUB_ENV
+          FIRST=$(git tag --sort=version:refname | awk -v last="${{ env.LAST_FINAL }}" 'found{print; exit} $0==last{found=1}')
+          echo "FIRST_TAG=$FIRST" >> $GITHUB_ENV
 
       - name: Get latest prerelease tag
-        run: |
-          LATEST_RC=$(gh release list --prerelease --limit 1 --json tagName --jq '.[0].tagName')
-          echo "LATEST_RC=$LATEST_RC" >> $GITHUB_ENV
+        run: echo "LATEST_RC=$(gh release list --prerelease --limit 1 --json tagName --jq '.[0].tagName')" >> $GITHUB_ENV
 
       - name: Collect tags between FIRST and LATEST_RC
         run: |
@@ -53,5 +38,7 @@ jobs:
               ')
           echo "TAGS=$TAGS" >> $GITHUB_ENV
 
+      - name: Update prerelease notes
+        run: gh release edit "${{ env.LATEST_RC }}" --notes "## Included tags:\n${{ env.TAGS }}"
       - name: Update prerelease notes
         run: gh release edit "$LATEST_RC" --notes "## Included tags:\n$TAGS"
