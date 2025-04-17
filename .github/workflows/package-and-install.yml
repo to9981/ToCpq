@@ -75,33 +75,35 @@ jobs:
         run: |
           echo "Latest RC tag: ${{ env.LATEST_RC }}"
 
-          # Debug package list output
+          # First, try to create package if it doesn't exist
+          echo "Creating package if it doesn't exist..."
+          sf package create \
+            --name "MyPackage" \
+            --package-type "Managed" \
+            --description "My Package Description" \
+            --path "force-app" \
+            --no-namespace || true
+
+          # Now list packages with correct command
           echo "Available packages:"
-          sf package list --json | jq '.'
+          PACKAGE_LIST=$(sf package list --verbose --json)
+          echo "$PACKAGE_LIST" | jq '.'
 
-          # Get package ID with error handling
-          PACKAGE_LIST=$(sf package list --json)
-          if [ -z "$PACKAGE_LIST" ]; then
-            echo "Error: No packages found"
-            exit 1
-          fi
-
-          # Try to find package by name
-          PACKAGE_ID=$(echo "$PACKAGE_LIST" | jq -r '.result[] | select(.Name=="MyPackage") | .Id')
-          if [ -z "$PACKAGE_ID" ]; then
-            echo "Error: Package 'MyPackage' not found"
-            echo "Available packages:"
-            echo "$PACKAGE_LIST" | jq -r '.result[] | .Name'
+          # Get package ID
+          PACKAGE_ID=$(echo "$PACKAGE_LIST" | jq -r '.result[0].Id')
+          if [ -z "$PACKAGE_ID" ] || [ "$PACKAGE_ID" = "null" ]; then
+            echo "Error: Package ID not found"
             exit 1
           fi
 
           echo "Package ID: ${PACKAGE_ID}"
 
-          # Create package version
-          echo "Creating package version for ${PACKAGE_ID}@${{ env.LATEST_RC }}..."
+          # Create version with corrected format
+          echo "Creating package version..."
+          VERSION_NUMBER=$(echo "${{ env.LATEST_RC }}" | sed 's/v//')  # Remove 'v' prefix
           CREATION_RESULT=$(sf package version create \
             --package "${PACKAGE_ID}" \
-            --version-number "${{ env.LATEST_RC }}" \
+            --version-number "${VERSION_NUMBER}" \
             --installation-key-bypass \
             --wait 10 \
             --json)
@@ -110,7 +112,6 @@ jobs:
           echo "${CREATION_RESULT}" | jq '.'
 
           VERSION_ID=$(echo "${CREATION_RESULT}" | jq -r '.result.SubscriberPackageVersionId')
-
           if [ -z "$VERSION_ID" ] || [ "$VERSION_ID" = "null" ]; then
             echo "Error: Failed to get package version ID"
             exit 1
