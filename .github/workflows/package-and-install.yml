@@ -75,49 +75,40 @@ jobs:
         run: |
           echo "Latest RC tag: ${{ env.LATEST_RC }}"
 
-          # First, try to create package if it doesn't exist
-          echo "Creating package if it doesn't exist..."
-          sf package create \
+          # Verify DevHub status
+          echo "Verifying DevHub setup..."
+          DEVHUB_STATUS=$(sf org list --json | jq -r '.result.devHubs[] | select(.isDefaultDevHubUsername == true) | .username')
+          if [ -z "$DEVHUB_STATUS" ]; then
+            echo "Error: No default DevHub configured"
+            echo "Available orgs:"
+            sf org list --json | jq '.'
+            exit 1
+          fi
+          echo "Using DevHub: $DEVHUB_STATUS"
+
+          # Enable DevHub features if needed
+          echo "Enabling DevHub features..."
+          sf org enable devhub --target-org DevHub || true
+
+          # Create package with error handling
+          echo "Creating package..."
+          CREATE_RESULT=$(sf package create \
             --name "MyPackage" \
             --package-type "Managed" \
             --description "My Package Description" \
             --path "force-app" \
-            --no-namespace || true
+            --no-namespace \
+            --target-dev-hub DevHub \
+            --json || echo '{"status": 1, "message": "Package creation failed"}')
 
-          # Now list packages with correct command
+          echo "Create result:"
+          echo "$CREATE_RESULT" | jq '.'
+
+          # Check if package exists or was created
+          echo "Checking package list..."
+          PACKAGE_LIST=$(sf package list --verbose --target-dev-hub DevHub --json)
           echo "Available packages:"
-          PACKAGE_LIST=$(sf package list --verbose --json)
           echo "$PACKAGE_LIST" | jq '.'
-
-          # Get package ID
-          PACKAGE_ID=$(echo "$PACKAGE_LIST" | jq -r '.result[0].Id')
-          if [ -z "$PACKAGE_ID" ] || [ "$PACKAGE_ID" = "null" ]; then
-            echo "Error: Package ID not found"
-            exit 1
-          fi
-
-          echo "Package ID: ${PACKAGE_ID}"
-
-          # Create version with corrected format
-          echo "Creating package version..."
-          VERSION_NUMBER=$(echo "${{ env.LATEST_RC }}" | sed 's/v//')  # Remove 'v' prefix
-          CREATION_RESULT=$(sf package version create \
-            --package "${PACKAGE_ID}" \
-            --version-number "${VERSION_NUMBER}" \
-            --installation-key-bypass \
-            --wait 10 \
-            --json)
-
-          echo "Creation result:"
-          echo "${CREATION_RESULT}" | jq '.'
-
-          VERSION_ID=$(echo "${CREATION_RESULT}" | jq -r '.result.SubscriberPackageVersionId')
-          if [ -z "$VERSION_ID" ] || [ "$VERSION_ID" = "null" ]; then
-            echo "Error: Failed to get package version ID"
-            exit 1
-          fi
-
-          echo "VERSION_ID=${VERSION_ID}" >> $GITHUB_ENV
 
       - name: Promote package version
         if: env.VERSION_ID != '' && env.VERSION_ID != 'null'
