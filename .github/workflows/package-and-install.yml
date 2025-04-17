@@ -50,9 +50,13 @@ jobs:
           sf org login sfdx-url -f env.authurl -a "${ENV_NAME}" --set-default
           rm env.authurl
 
-          # List org details with corrected JQ query
+          # Debug JSON structure
+          echo "JSON structure:"
+          sf org list --json | jq '.'
+
+          # List org details with simplified query
           echo "Environment org details:"
-          sf org list --json | jq -r --arg env "$ENV_NAME" '.result[] | select(.aliases[0] == $env) | .username'
+          sf org list --json | jq -r --arg env "$ENV_NAME" '.result[] | select(.username != null) | .username'
 
       - name: Get latest prerelease tag
         id: get-rc
