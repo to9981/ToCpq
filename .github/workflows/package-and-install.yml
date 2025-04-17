@@ -23,6 +23,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install sf CLI
+        uses: salesforcecli/action/setup@v1
+        with:
+          version: latest
+
       - name: Authenticate to Dev Org
         run: echo "$DEVHUB_AUTH_URL" | sf auth org login --with-url
 
