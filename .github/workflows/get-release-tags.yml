@@ -11,7 +11,7 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -32,10 +32,8 @@ jobs:
 
       - name: Get latest prerelease tag by date
         run: |
-          LATEST_RC=$(
-            gh api /repos/${{ github.repository }}/releases \
-              --jq 'map(select(.prerelease)) | sort_by(.created_at) | reverse | .[0].tag_name'
-          )
+          LATEST_RC=$(gh api /repos/${{ github.repository }}/releases \
+            --jq 'map(select(.prerelease)) | sort_by(.created_at) | reverse | .[0].tag_name')
           echo "LATEST_RC=$LATEST_RC" >> $GITHUB_ENV
 
       - name: Collect tags between FIRST_TAG and LATEST_RC
@@ -45,7 +43,15 @@ jobs:
             found && $0==end { print; exit }
             found { print }
           ')
+          TAGS=$(echo "$TAGS" | tr '\n' ' ')
           echo "TAGS=$TAGS" >> $GITHUB_ENV
+
+      - name: Debug values
+        run: |
+          echo "LAST_FINAL=$LAST_FINAL"
+          echo "FIRST_TAG=$FIRST_TAG"
+          echo "LATEST_RC=$LATEST_RC"
+          echo "TAGS=$TAGS"
 
       - name: Update prerelease notes
         run: gh release edit "$LATEST_RC" --notes "## Included tags:\n$TAGS"
