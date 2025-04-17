@@ -24,7 +24,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install sf CLI
-        uses: salesforcecli/action/setup@v1
+        uses: salesforcecli/cli-deploy-action@v1
         with:
           version: latest
 
