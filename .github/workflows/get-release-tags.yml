@@ -1,5 +1,4 @@
-# This workflow collects all tags between the last final release and the latest prerelease
-name: Get Release Tags
+name: Gather Release Tags
 on:
   workflow_dispatch:
 
@@ -7,10 +6,13 @@ permissions:
   contents: write
 
 jobs:
-  update-release:
+  gather-tags:
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -18,25 +20,38 @@ jobs:
         run: git fetch --tags
 
       - name: Get latest final release tag
-        run: echo "LAST_FINAL=$(gh release list --exclude-prerelease --limit 1 --json tagName --jq '.[0].tagName')" >> $GITHUB_ENV
+        run: |
+          LAST_FINAL=$(gh release list --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName')
+          echo "LAST_FINAL=$LAST_FINAL" >> $GITHUB_ENV
 
       - name: Get first tag after last final release
         run: |
-          FIRST=$(git tag --sort=version:refname | awk -v last="${{ env.LAST_FINAL }}" 'found{print; exit} $0==last{found=1}')
-          echo "FIRST_TAG=$FIRST" >> $GITHUB_ENV
+          FIRST_TAG=$(git tag --sort=version:refname \
+            | awk -v last="$LAST_FINAL" 'found{print; exit} $0==last{found=1}')
+          echo "FIRST_TAG=$FIRST_TAG" >> $GITHUB_ENV
 
-      - name: Get latest prerelease tag
-        run: echo "LATEST_RC=$(gh release list --prerelease --limit 1 --json tagName --jq '.[0].tagName')" >> $GITHUB_ENV
-
-      - name: Collect tags between FIRST and LATEST_RC
+      - name: Get latest prerelease tag by date
         run: |
-          TAGS=$(git tag --sort=version:refname \
-            | awk -v start="$FIRST_TAG" -v end="$LATEST_RC" '
-                found && $0==end { print; exit }
-                found           { print }
-                $0==start       { found=1 }
-              ')
+          LATEST_RC=$(gh api /repos/${{ github.repository }}/releases \
+            --jq 'map(select(.prerelease)) | sort_by(.created_at) | reverse | .[0].tag_name')
+          echo "LATEST_RC=$LATEST_RC" >> $GITHUB_ENV
+
+      - name: Collect tags between FIRST_TAG and LATEST_RC
+        run: |
+          TAGS=$(git tag --sort=version:refname | awk -v start="$FIRST_TAG" -v end="$LATEST_RC" '
+            $0==start { print; if (start==end) exit; found=1; next }
+            found && $0==end { print; exit }
+            found { print }
+          ')
+          TAGS=$(echo "$TAGS" | tr '\n' ' ')
           echo "TAGS=$TAGS" >> $GITHUB_ENV
 
+      - name: Debug values
+        run: |
+          echo "LAST_FINAL=$LAST_FINAL"
+          echo "FIRST_TAG=$FIRST_TAG"
+          echo "LATEST_RC=$LATEST_RC"
+          echo "TAGS=$TAGS"
+
       - name: Update prerelease notes
-        run: gh release edit "${{ env.LATEST_RC }}" --notes "## Included tags:\n${{ env.TAGS }}"
+        run: gh release edit "$LATEST_RC" --notes "## Included tags:\n$TAGS"
