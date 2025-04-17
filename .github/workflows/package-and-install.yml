@@ -24,7 +24,7 @@ jobs:
           fetch-depth: 0
 
       - name: Authenticate to Dev Org
-        run: echo "$SF_AUTH_URL" | sf auth org login --with-url
+        run: echo "$DEVHUB_AUTH_URL" | sf auth org login --with-url
 
       - name: Get latest prerelease tag
         id: get-rc
