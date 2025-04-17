@@ -1,7 +1,6 @@
 # .github/workflows/package-and-install.yml
 name: Package and Install
 on:
-  # workflow_dispatch:
   workflow_run:
     workflows: ["Gather Release Tags"]
     types: [completed]
@@ -15,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DEVHUB_AUTH_URL: ${{ secrets.DEVHUB_AUTH_URL }}
-      SF_TARGET_ORG: ${{ secrets.SF_ORG_URL }}
+      SF_ORG_AUTH_URL: ${{ secrets.SF_ORG_URL }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout code
@@ -23,19 +22,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up SF CLI
-        uses: sfdx-actions/setup-sfdx@v1
+      - name: Set up sf CLI
+        uses: patrykacc/sf-cli-setup@v1.1.0
+        with:
+          version: latest
 
-      # - name: Authenticate to Dev Org
-      #   run: echo "$DEVHUB_AUTH_URL" | sf auth org login --with-url
-
-      - name: Authenticate to DevHub
-        # run: echo "$DEVHUB_AUTH_URL" | sf org login sfdx-url -a orgAlias --sfdx-url-stdin
-
+      - name: Authenticate to Dev Hub
         run: |
           echo "$DEVHUB_AUTH_URL" > devhub.authurl
           sf org login sfdx-url -f devhub.authurl -a DevHub --set-default-dev-hub
-          rm -f devhub.authurl
+          rm devhub.authurl
+
+      - name: Authenticate to Target Org
+        run: |
+          echo "$SF_ORG_AUTH_URL" > target.authurl
+          sf org login sfdx-url -f target.authurl -a TargetOrg --set-default-org
+          rm target.authurl
 
       - name: Get latest prerelease tag
         id: get-rc
@@ -49,7 +51,8 @@ jobs:
         run: |
           VERSION_ID=$(sf package version create \
             --package MyPackage@${{ env.LATEST_RC }} \
-            --installationkeybypass --wait 10 --json | jq -r .result.Id)
+            --installationkeybypass --wait 10 --json \
+            | jq -r .result.Id)
           echo "VERSION_ID=$VERSION_ID" >> $GITHUB_ENV
 
       - name: Promote package version
@@ -58,10 +61,12 @@ jobs:
           --noprompt
 
       - name: Install package into target org
-        run: sf package install \
-          --package ${{ env.VERSION_ID }} \
-          --target-org ${{ env.SF_TARGET_ORG }} \
-          --wait 10
+        run: |
+          sf package install \
+            --package ${{ env.VERSION_ID }} \
+            --target-org TargetOrg \
+            --wait 10
 
       - name: Run Apex tests
-        run: sf apex run test --target-org ${{ env.SF_TARGET_ORG }}
+        run: |
+          sf apex run test --target-org TargetOrg
