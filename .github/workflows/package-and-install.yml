@@ -26,8 +26,11 @@ jobs:
       - name: Set up SF CLI
         uses: sfdx-actions/setup-sfdx@v1
 
-      - name: Authenticate to Dev Org
-        run: echo "$DEVHUB_AUTH_URL" | sf auth org login --with-url
+      # - name: Authenticate to Dev Org
+      #   run: echo "$DEVHUB_AUTH_URL" | sf auth org login --with-url
+
+      - name: Authenticate to DevHub
+        run: echo "$DEVHUB_AUTH_URL" | sf auth sfdx-url store --with-url --set-default-dev-hub
 
       - name: Get latest prerelease tag
         id: get-rc
