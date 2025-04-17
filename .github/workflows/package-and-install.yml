@@ -1,9 +1,10 @@
 # .github/workflows/package-and-install.yml
 name: Package and Install
 on:
-  workflow_run:
-    workflows: ["Gather Release Tags"]
-    types: [completed]
+  workflow_dispatch
+  # workflow_run:
+  #   workflows: ["Gather Release Tags"]
+  #   types: [completed]
 
 permissions:
   contents: write
@@ -72,15 +73,28 @@ jobs:
       - name: Create beta package version
         id: pkg
         run: |
-          echo "Creating package version for MyPackage@${{ env.LATEST_RC }}"
-          VERSION_ID=$(sf package version create \
-            --package "MyPackage@${{ env.LATEST_RC }}" \
+          echo "Latest RC tag: ${{ env.LATEST_RC }}"
+
+          # Get package ID first
+          PACKAGE_ID=$(sf package list --json | jq -r '.result[] | select(.name=="MyPackage") | .Id')
+          echo "Package ID: ${PACKAGE_ID}"
+
+          # Create version with full debug
+          echo "Creating package version..."
+          CREATION_RESULT=$(sf package version create \
+            --package "${PACKAGE_ID}@${{ env.LATEST_RC }}" \
             --installation-key-bypass \
             --wait 10 \
-            --json | jq -r '.result.Id')
+            --json)
 
-          if [ -z "$VERSION_ID" ]; then
+          echo "Creation result: ${CREATION_RESULT}"
+
+          VERSION_ID=$(echo "${CREATION_RESULT}" | jq -r '.result.SubscriberPackageVersionId')
+
+          if [ -z "$VERSION_ID" ] || [ "$VERSION_ID" = "null" ]; then
             echo "Error: Failed to get package version ID"
+            echo "Full response:"
+            echo "${CREATION_RESULT}" | jq '.'
             exit 1
           fi
 
@@ -88,12 +102,18 @@ jobs:
           echo "VERSION_ID=${VERSION_ID}" >> $GITHUB_ENV
 
       - name: Promote package version
-        if: env.VERSION_ID != ''
+        if: env.VERSION_ID != '' && env.VERSION_ID != 'null'
         run: |
+          if [ -z "$VERSION_ID" ] || [ "$VERSION_ID" = "null" ]; then
+            echo "Error: Invalid package version ID"
+            exit 1
+          fi
+
           echo "Promoting package version: ${{ env.VERSION_ID }}"
           sf package version promote \
             --package "${{ env.VERSION_ID }}" \
-            --no-prompt
+            --no-prompt \
+            --json | jq '.'
 
       - name: Install package into target org
         run: |
