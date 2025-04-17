@@ -17,6 +17,7 @@ jobs:
       DEVHUB_AUTH_URL: ${{ secrets.DEVHUB_AUTH_URL }} # Repository secret
       SF_ORG_AUTH_URL: ${{ secrets.SF_ORG_URL }} # Environment secret
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CURRENT_ENV: ${{ github.environment }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -37,19 +38,21 @@ jobs:
       - name: Authenticate to Environment Org
         run: |
           # Debug environment name
-          echo "Current environment: ${{ github.environment }}"
+          CURRENT_ENV="${{ github.environment }}"
+          echo "Current environment: ${CURRENT_ENV:-staging}"
 
-          # Set environment name with fallback
-          ENV_NAME="${{ github.environment || 'staging' }}"
+          # Set environment name with explicit fallback
+          ENV_NAME="${CURRENT_ENV:-staging}"
+          echo "Using environment: ${ENV_NAME}"
 
-          echo "Authenticating to ${ENV_NAME} environment org"
+          # Authenticate
           echo "$SF_ORG_AUTH_URL" > env.authurl
           sf org login sfdx-url -f env.authurl -a "${ENV_NAME}" --set-default
           rm env.authurl
 
-          # Modified org list command with proper JQ parsing
+          # List org details with fixed JQ query
           echo "Environment org details:"
-          sf org list --json | jq -r --arg env "${ENV_NAME}" '.result[] | select(.alias==$env) | .username'
+          sf org list --json | jq -r '.result | map(select(.alias == "'"${ENV_NAME}"'")) | .[0].username'
 
       - name: Get latest prerelease tag
         id: get-rc
