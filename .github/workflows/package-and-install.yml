@@ -36,13 +36,20 @@ jobs:
 
       - name: Authenticate to Environment Org
         run: |
-          ENV_NAME="${{ github.environment }}"
+          # Debug environment name
+          echo "Current environment: ${{ github.environment }}"
+
+          # Set environment name with fallback
+          ENV_NAME="${{ github.environment || 'staging' }}"
+
           echo "Authenticating to ${ENV_NAME} environment org"
           echo "$SF_ORG_AUTH_URL" > env.authurl
           sf org login sfdx-url -f env.authurl -a "${ENV_NAME}" --set-default
           rm env.authurl
+
+          # Modified org list command with proper JQ parsing
           echo "Environment org details:"
-          sf org list --all --json | jq -r ".result[] | select(.alias==\"${ENV_NAME}\") | .username"
+          sf org list --json | jq -r --arg env "${ENV_NAME}" '.result[] | select(.alias==$env) | .username'
 
       - name: Get latest prerelease tag
         id: get-rc
