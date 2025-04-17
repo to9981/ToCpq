@@ -72,16 +72,28 @@ jobs:
       - name: Create beta package version
         id: pkg
         run: |
+          echo "Creating package version for MyPackage@${{ env.LATEST_RC }}"
           VERSION_ID=$(sf package version create \
-            --package MyPackage@${{ env.LATEST_RC }} \
-            --installationkeybypass --wait 10 --json \
-            | jq -r .result.Id)
-          echo "VERSION_ID=$VERSION_ID" >> $GITHUB_ENV
+            --package "MyPackage@${{ env.LATEST_RC }}" \
+            --installation-key-bypass \
+            --wait 10 \
+            --json | jq -r '.result.Id')
+
+          if [ -z "$VERSION_ID" ]; then
+            echo "Error: Failed to get package version ID"
+            exit 1
+          fi
+
+          echo "Created package version: $VERSION_ID"
+          echo "VERSION_ID=${VERSION_ID}" >> $GITHUB_ENV
 
       - name: Promote package version
-        run: sf package version promote \
-          --package-version-id ${{ env.VERSION_ID }} \
-          --noprompt
+        if: env.VERSION_ID != ''
+        run: |
+          echo "Promoting package version: ${{ env.VERSION_ID }}"
+          sf package version promote \
+            --package "${{ env.VERSION_ID }}" \
+            --no-prompt
 
       - name: Install package into target org
         run: |
