@@ -1,0 +1,55 @@
+# .github/workflows/package-and-install.yml
+name: Package and Install
+on:
+  workflow_run:
+    workflows: ["Gather Release Tags"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  package-and-install:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      SF_AUTH_URL: ${{ secrets.SFDX_INTEGRATION_URL }}
+      SF_TARGET_ORG: ${{ secrets.SF_ORG_URL }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Authenticate to Dev Org
+        run: echo "$SF_AUTH_URL" | sf auth org login --with-url
+
+      - name: Get latest prerelease tag
+        id: get-rc
+        run: |
+          LATEST_RC=$(gh api /repos/${{ github.repository }}/releases \
+            --jq 'map(select(.prerelease))|sort_by(.created_at)|reverse|.[0].tag_name')
+          echo "LATEST_RC=$LATEST_RC" >> $GITHUB_ENV
+
+      - name: Create beta package version
+        id: pkg
+        run: |
+          VERSION_ID=$(sf package version create \
+            --package MyPackage@${{ env.LATEST_RC }} \
+            --installationkeybypass --wait 10 --json | jq -r .result.Id)
+          echo "VERSION_ID=$VERSION_ID" >> $GITHUB_ENV
+
+      - name: Promote package version
+        run: sf package version promote \
+          --package-version-id ${{ env.VERSION_ID }} \
+          --noprompt
+
+      - name: Install package into target org
+        run: sf package install \
+          --package ${{ env.VERSION_ID }} \
+          --target-org ${{ env.SF_TARGET_ORG }} \
+          --wait 10
+
+      - name: Run Apex tests
+        run: sf apex run test --target-org ${{ env.SF_TARGET_ORG }}
