@@ -75,30 +75,47 @@ jobs:
         run: |
           echo "Latest RC tag: ${{ env.LATEST_RC }}"
 
-          # Get package ID first
-          PACKAGE_ID=$(sf package list --json | jq -r '.result[] | select(.name=="MyPackage") | .Id')
+          # Debug package list output
+          echo "Available packages:"
+          sf package list --json | jq '.'
+
+          # Get package ID with error handling
+          PACKAGE_LIST=$(sf package list --json)
+          if [ -z "$PACKAGE_LIST" ]; then
+            echo "Error: No packages found"
+            exit 1
+          fi
+
+          # Try to find package by name
+          PACKAGE_ID=$(echo "$PACKAGE_LIST" | jq -r '.result[] | select(.Name=="MyPackage") | .Id')
+          if [ -z "$PACKAGE_ID" ]; then
+            echo "Error: Package 'MyPackage' not found"
+            echo "Available packages:"
+            echo "$PACKAGE_LIST" | jq -r '.result[] | .Name'
+            exit 1
+          fi
+
           echo "Package ID: ${PACKAGE_ID}"
 
-          # Create version with full debug
-          echo "Creating package version..."
+          # Create package version
+          echo "Creating package version for ${PACKAGE_ID}@${{ env.LATEST_RC }}..."
           CREATION_RESULT=$(sf package version create \
-            --package "${PACKAGE_ID}@${{ env.LATEST_RC }}" \
+            --package "${PACKAGE_ID}" \
+            --version-number "${{ env.LATEST_RC }}" \
             --installation-key-bypass \
             --wait 10 \
             --json)
 
-          echo "Creation result: ${CREATION_RESULT}"
+          echo "Creation result:"
+          echo "${CREATION_RESULT}" | jq '.'
 
           VERSION_ID=$(echo "${CREATION_RESULT}" | jq -r '.result.SubscriberPackageVersionId')
 
           if [ -z "$VERSION_ID" ] || [ "$VERSION_ID" = "null" ]; then
             echo "Error: Failed to get package version ID"
-            echo "Full response:"
-            echo "${CREATION_RESULT}" | jq '.'
             exit 1
           fi
 
-          echo "Created package version: $VERSION_ID"
           echo "VERSION_ID=${VERSION_ID}" >> $GITHUB_ENV
 
       - name: Promote package version
