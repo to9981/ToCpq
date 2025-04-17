@@ -30,7 +30,9 @@ jobs:
       #   run: echo "$DEVHUB_AUTH_URL" | sf auth org login --with-url
 
       - name: Authenticate to DevHub
-        run: echo "$DEVHUB_AUTH_URL" | sf org login sfdx-url -a orgAlias --sfdx-url-stdin
+        # run: echo "$DEVHUB_AUTH_URL" | sf org login sfdx-url -a orgAlias --sfdx-url-stdin
+
+        run: echo "$DEVHUB_AUTH_URL" > devhub.authurl | sf org login sfdx-url -f devhub.authurl -a DevHub --set-default-dev-hub
 
       - name: Get latest prerelease tag
         id: get-rc
