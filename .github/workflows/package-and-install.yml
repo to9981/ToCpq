@@ -54,9 +54,13 @@ jobs:
           echo "JSON structure:"
           sf org list --json | jq '.'
 
-          # List org details with simplified query
+          # List org details with corrected query
           echo "Environment org details:"
-          sf org list --json | jq -r --arg env "$ENV_NAME" '.result[] | select(.username != null) | .username'
+          sf org list --json | jq -r --arg env "$ENV_NAME" '
+            .result.nonScratchOrgs[] | 
+            select(.alias == $env) | 
+            "Username: \(.username)\nOrg ID: \(.orgId)\nAlias: \(.alias)"
+          '
 
       - name: Get latest prerelease tag
         id: get-rc
