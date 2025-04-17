@@ -13,7 +13,7 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     env:
-      SF_AUTH_URL: ${{ secrets.SFDX_INTEGRATION_URL }}
+      DEVHUB_AUTH_URL: ${{ secrets.DEVHUB_AUTH_URL }}
       SF_TARGET_ORG: ${{ secrets.SF_ORG_URL }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
