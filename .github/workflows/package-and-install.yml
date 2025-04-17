@@ -36,7 +36,7 @@ jobs:
       - name: Authenticate to Target Org
         run: |
           echo "$SF_ORG_AUTH_URL" > target.authurl
-          sf org login sfdx-url -f target.authurl -a TargetOrg --set-default-org
+          sf org login sfdx-url -f target.authurl -a TargetOrg --set-default
           rm target.authurl
 
       - name: Get latest prerelease tag
