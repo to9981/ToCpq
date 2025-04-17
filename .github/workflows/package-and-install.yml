@@ -36,12 +36,13 @@ jobs:
 
       - name: Authenticate to Environment Org
         run: |
-          echo "Authenticating to ${{ github.environment }} environment org"
+          ENV_NAME="${{ github.environment }}"
+          echo "Authenticating to ${ENV_NAME} environment org"
           echo "$SF_ORG_AUTH_URL" > env.authurl
-          sf org login sfdx-url -f env.authurl -a ${{ github.environment }} --set-default
+          sf org login sfdx-url -f env.authurl -a "${ENV_NAME}" --set-default
           rm env.authurl
           echo "Environment org details:"
-          sf org list --all --json | jq -r '.result[] | select(.alias=="${{ github.environment }}") | .username'
+          sf org list --all --json | jq -r ".result[] | select(.alias==\"${ENV_NAME}\") | .username"
 
       - name: Get latest prerelease tag
         id: get-rc
