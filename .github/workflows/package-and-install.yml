@@ -11,10 +11,11 @@ permissions:
 jobs:
   package-and-install:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    environment: staging # Specify the environment
     runs-on: ubuntu-latest
     env:
-      DEVHUB_AUTH_URL: ${{ secrets.DEVHUB_AUTH_URL }}
-      SF_ORG_AUTH_URL: ${{ secrets.ORG_URL }}
+      DEVHUB_AUTH_URL: ${{ secrets.DEVHUB_AUTH_URL }} # Repository secret
+      SF_ORG_AUTH_URL: ${{ secrets.SF_ORG_URL }} # Environment secret
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout code
@@ -33,11 +34,14 @@ jobs:
           sf org login sfdx-url -f devhub.authurl -a DevHub --set-default-dev-hub
           rm devhub.authurl
 
-      - name: Authenticate to Target Org
+      - name: Authenticate to Environment Org
         run: |
-          echo "$SF_ORG_AUTH_URL" > target.authurl
-          sf org login sfdx-url -f target.authurl -a TargetOrg --set-default
-          rm target.authurl
+          echo "Authenticating to ${{ github.environment }} environment org"
+          echo "$SF_ORG_AUTH_URL" > env.authurl
+          sf org login sfdx-url -f env.authurl -a ${{ github.environment }} --set-default
+          rm env.authurl
+          echo "Environment org details:"
+          sf org list --all --json | jq -r '.result[] | select(.alias=="${{ github.environment }}") | .username'
 
       - name: Get latest prerelease tag
         id: get-rc
@@ -64,9 +68,9 @@ jobs:
         run: |
           sf package install \
             --package ${{ env.VERSION_ID }} \
-            --target-org TargetOrg \
+            --target-org ${{ github.environment }} \
             --wait 10
 
       - name: Run Apex tests
         run: |
-          sf apex run test --target-org TargetOrg
+          sf apex run test --target-org ${{ github.environment }}
