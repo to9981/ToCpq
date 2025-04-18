@@ -1,6 +1,7 @@
 # .github/workflows/package-and-install.yml
 name: Package and Install
 on:
+  # workflow_dispatch
   workflow_run:
     workflows: ["Gather Release Tags"]
     types: [completed]
@@ -11,13 +12,13 @@ permissions:
 jobs:
   package-and-install:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    environment: staging
+    environment: staging # Specify the environment
     runs-on: ubuntu-latest
     env:
-      DEVHUB_AUTH_URL: ${{ secrets.DEVHUB_AUTH_URL }}
-      SF_ORG_AUTH_URL: ${{ secrets.SF_ORG_URL }}
+      DEVHUB_AUTH_URL: ${{ secrets.DEVHUB_AUTH_URL }} # Repository secret
+      SF_ORG_AUTH_URL: ${{ secrets.SF_ORG_URL }} # Environment secret
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      ORG_ALIAS: ${{ github.environment }}
+      CURRENT_ENV: ${{ github.environment }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -37,9 +38,30 @@ jobs:
 
       - name: Authenticate to Environment Org
         run: |
-          echo "$SF_ORG_AUTH_URL" > org.authurl
-          sf org login sfdx-url -f org.authurl -a $ORG_ALIAS --set-default
-          rm org.authurl
+          # Debug environment name
+          CURRENT_ENV="${{ github.environment }}"
+          echo "Current environment: ${CURRENT_ENV:-staging}"
+
+          # Set environment name with explicit fallback
+          ENV_NAME="${CURRENT_ENV:-staging}"
+          echo "Using environment: ${ENV_NAME}"
+
+          # Authenticate
+          echo "$SF_ORG_AUTH_URL" > env.authurl
+          sf org login sfdx-url -f env.authurl -a "${ENV_NAME}" --set-default
+          rm env.authurl
+
+          # Debug JSON structure
+          echo "JSON structure:"
+          sf org list --json | jq '.'
+
+          # List org details with corrected query
+          echo "Environment org details:"
+          sf org list --json | jq -r --arg env "$ENV_NAME" '
+            .result.nonScratchOrgs[] | 
+            select(.alias == $env) | 
+            "Username: \(.username)\nOrg ID: \(.orgId)\nAlias: \(.alias)"
+          '
 
       - name: Get latest prerelease tag
         id: get-rc
@@ -88,50 +110,27 @@ jobs:
           echo "Available packages:"
           echo "$PACKAGE_LIST" | jq '.'
 
-          # Get package ID
-          PACKAGE_ID=$(echo "$PACKAGE_LIST" | jq -r '.result[0].Id')
-          if [ -z "$PACKAGE_ID" ] || [ "$PACKAGE_ID" = "null" ]; then
-            echo "Error: Package ID not found"
-            exit 1
-          fi
-
-          echo "Package ID: ${PACKAGE_ID}"
-
-          # Create version with corrected format
-          echo "Creating package version..."
-          VERSION_NUMBER=$(echo "${{ env.LATEST_RC }}" | sed 's/v//')  # Remove 'v' prefix
-          CREATION_RESULT=$(sf package version create \
-            --package "${PACKAGE_ID}" \
-            --version-number "${VERSION_NUMBER}" \
-            --installation-key-bypass \
-            --wait 10 \
-            --json)
-
-          echo "Creation result:"
-          echo "${CREATION_RESULT}" | jq '.'
-
-          VERSION_ID=$(echo "${CREATION_RESULT}" | jq -r '.result.SubscriberPackageVersionId')
-          if [ -z "$VERSION_ID" ] || [ "$VERSION_ID" = "null" ]; then
-            echo "Error: Failed to get package version ID"
-            exit 1
-          fi
-
-          echo "VERSION_ID=${VERSION_ID}" >> $GITHUB_ENV
-
       - name: Promote package version
-        if: env.VERSION_ID && env.VERSION_ID != 'null'
+        if: env.VERSION_ID != '' && env.VERSION_ID != 'null'
         run: |
+          if [ -z "$VERSION_ID" ] || [ "$VERSION_ID" = "null" ]; then
+            echo "Error: Invalid package version ID"
+            exit 1
+          fi
+
+          echo "Promoting package version: ${{ env.VERSION_ID }}"
           sf package version promote \
-            --package-version-id $VERSION_ID \
-            --noprompt
+            --package "${{ env.VERSION_ID }}" \
+            --no-prompt \
+            --json | jq '.'
 
       - name: Install package into target org
         run: |
           sf package install \
-            --package $VERSION_ID \
-            --target-org $ORG_ALIAS \
+            --package ${{ env.VERSION_ID }} \
+            --target-org ${{ github.environment }} \
             --wait 10
 
       - name: Run Apex tests
         run: |
-          sf apex run test --target-org $ORG_ALIAS
+          sf apex run test --target-org ${{ github.environment }}
