@@ -33,8 +33,16 @@ jobs:
       - name: Authenticate to Dev Hub
         run: |
           echo "$DEVHUB_AUTH_URL" > devhub.authurl
-          sf org login sfdx-url -f devhub.authurl -a DevHub --set-default-dev-hub
+          sf org login sfdx-url -f devhub.authurl -a DevHub --set-default-dev-hub --set-default
           rm devhub.authurl
+
+          # Verify DevHub configuration
+          echo "Verifying DevHub configuration..."
+          sf config set target-dev-hub=DevHub
+
+          # Display org status
+          echo "DevHub org status:"
+          sf org display --json | jq '.'
 
       - name: Authenticate to Environment Org
         run: |
@@ -75,40 +83,16 @@ jobs:
         run: |
           echo "Latest RC tag: ${{ env.LATEST_RC }}"
 
-          # Verify DevHub status
+          # Verify DevHub status using alias instead of default flag
           echo "Verifying DevHub setup..."
-          DEVHUB_STATUS=$(sf org list --json | jq -r '.result.devHubs[] | select(.isDefaultDevHubUsername == true) | .username')
+          DEVHUB_STATUS=$(sf org list --json | jq -r '.result.devHubs[] | select(.alias=="DevHub") | .username')
           if [ -z "$DEVHUB_STATUS" ]; then
-            echo "Error: No default DevHub configured"
+            echo "Error: DevHub not found"
             echo "Available orgs:"
             sf org list --json | jq '.'
             exit 1
           fi
           echo "Using DevHub: $DEVHUB_STATUS"
-
-          # Enable DevHub features if needed
-          echo "Enabling DevHub features..."
-          sf org enable devhub --target-org DevHub || true
-
-          # Create package with error handling
-          echo "Creating package..."
-          CREATE_RESULT=$(sf package create \
-            --name "MyPackage" \
-            --package-type "Managed" \
-            --description "My Package Description" \
-            --path "force-app" \
-            --no-namespace \
-            --target-dev-hub DevHub \
-            --json || echo '{"status": 1, "message": "Package creation failed"}')
-
-          echo "Create result:"
-          echo "$CREATE_RESULT" | jq '.'
-
-          # Check if package exists or was created
-          echo "Checking package list..."
-          PACKAGE_LIST=$(sf package list --verbose --target-dev-hub DevHub --json)
-          echo "Available packages:"
-          echo "$PACKAGE_LIST" | jq '.'
 
       - name: Promote package version
         if: env.VERSION_ID != '' && env.VERSION_ID != 'null'
