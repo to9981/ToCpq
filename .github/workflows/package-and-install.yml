@@ -123,11 +123,25 @@ jobs:
             --json | jq '.'
 
       - name: Install package into target org
+        if: env.VERSION_ID != '' && env.VERSION_ID != 'null'
         run: |
+          # Debug values
+          echo "Installing package version: ${{ env.VERSION_ID }}"
+          echo "Target environment: ${ENV_NAME}"
+
+          # Verify package exists
+          if [ -z "$VERSION_ID" ]; then
+            echo "Error: No package version ID found"
+            exit 1
+          fi
+
+          # Install package
           sf package install \
-            --package ${{ env.VERSION_ID }} \
-            --target-org ${{ github.environment }} \
-            --wait 10
+            --package "$VERSION_ID" \
+            --target-org "${ENV_NAME}" \
+            --wait 10 \
+            --no-prompt \
+            --json | jq '.'
 
       - name: Run Apex tests
         run: |
