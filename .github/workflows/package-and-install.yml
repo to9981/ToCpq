@@ -83,16 +83,30 @@ jobs:
         run: |
           echo "Latest RC tag: ${{ env.LATEST_RC }}"
 
-          # Verify DevHub status using alias instead of default flag
+          # Verify DevHub status by checking isDevHub flag
           echo "Verifying DevHub setup..."
-          DEVHUB_STATUS=$(sf org list --json | jq -r '.result.devHubs[] | select(.alias=="DevHub") | .username')
+          DEVHUB_STATUS=$(sf org list --json | jq -r '.result.devHubs[] | select(.isDevHub==true) | .username')
           if [ -z "$DEVHUB_STATUS" ]; then
-            echo "Error: DevHub not found"
+            echo "Error: No DevHub org found"
             echo "Available orgs:"
             sf org list --json | jq '.'
             exit 1
           fi
           echo "Using DevHub: $DEVHUB_STATUS"
+
+          # Create package with verified DevHub
+          echo "Creating package..."
+          CREATE_RESULT=$(sf package create \
+            --name "MyPackage" \
+            --package-type "Managed" \
+            --description "My Package Description" \
+            --path "force-app" \
+            --no-namespace \
+            --target-org "$DEVHUB_STATUS" \
+            --json || echo '{"status": 1, "message": "Package creation failed"}')
+
+          echo "Create result:"
+          echo "$CREATE_RESULT" | jq '.'
 
       - name: Promote package version
         if: env.VERSION_ID != '' && env.VERSION_ID != 'null'
