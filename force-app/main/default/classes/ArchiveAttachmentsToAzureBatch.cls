@@ -1,4 +1,4 @@
-public class ArchiveAttachmentsToAzureBatch implements Database.Batchable<SObject>, Database.Stateful {
+public class ArchiveAttachmentsToAzureBatch implements Database.Batchable<SObject>, Database.AllowsCallouts, Database.Stateful {
   private String sasToken;
 
   public ArchiveAttachmentsToAzureBatch() {
