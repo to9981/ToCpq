@@ -1,33 +1,12 @@
 public with sharing class ArchiveAttachmentsToAzure {
+  private static final Integer BATCH_SIZE = 50; // Adjust based on callout limits
+
   public static void runAll() {
-    List<ContentDocumentLink> links = new List<ContentDocumentLink>();
-    List<ContentVersion> versions;
+    // Security checks
+    checkObjectAccess();
 
-    // First check Case object access
-    if (!Schema.sObjectType.Case.isAccessible()) {
-      throw new System.SecurityException(
-        'Insufficient permissions to access Case object.'
-      );
-    }
-
-    // Then check ContentDocumentLink access
-    if (!Schema.sObjectType.ContentDocumentLink.isAccessible()) {
-      throw new System.SecurityException(
-        'Insufficient permissions to access ContentDocumentLink object.'
-      );
-    }
-
-    // Finally check field level security
-    if (
-      !Schema.sObjectType.ContentDocumentLink.fields.ContentDocumentId.isAccessible()
-    ) {
-      throw new System.SecurityException(
-        'Insufficient permissions to access ContentDocumentId field.'
-      );
-    }
-
-    // After all security checks, perform the query
-    links = [
+    // Get Case document links in bulk
+    List<ContentDocumentLink> links = [
       SELECT ContentDocumentId
       FROM ContentDocumentLink
       WHERE LinkedEntityId IN (SELECT Id FROM Case)
@@ -38,57 +17,93 @@ public with sharing class ArchiveAttachmentsToAzure {
       docIds.add(link.ContentDocumentId);
     }
 
-    // Query latest versions
-    if (!Schema.sObjectType.ContentVersion.isAccessible()) {
-      throw new System.SecurityException(
-        'Insufficient permissions to access ContentVersion object.'
-      );
-    }
-
-    versions = [
+    // Query latest versions in bulk
+    List<ContentVersion> versions = [
       SELECT VersionData, PathOnClient, Title
       FROM ContentVersion
       WHERE ContentDocumentId IN :docIds AND IsLatest = TRUE
     ];
 
-    // Invoke callout per file
-    for (ContentVersion cv : versions) {
-      uploadBlob(cv);
-    }
-  }
-
-  private static void uploadBlob(ContentVersion cv) {
-    if (!Schema.sObjectType.AzureSAS__c.isAccessible()) {
-      throw new System.SecurityException(
-        'Insufficient permissions to access AzureSAS__c object.'
-      );
-    }
-
-    String fileName = cv.PathOnClient != null ? cv.PathOnClient : cv.Title;
-    String blobName = EncodingUtil.urlEncode(cv.Id + fileName, 'UTF-8');
-
+    // Get SAS token once for all operations
     AzureSAS__c sasRecord = [
       SELECT SASToken__c
       FROM AzureSAS__c
       ORDER BY CreatedDate DESC
       LIMIT 1
     ];
-    String sasToken = sasRecord.SASToken__c;
-    System.debug('SAS Token: ' + sasToken);
 
-    HttpRequest req = new HttpRequest();
-    req.setEndpoint(
-      'https://account425.blob.core.windows.net/container1/' +
-        blobName +
-        '?' +
-        sasToken
-    );
-    req.setMethod('PUT');
-    req.setHeader('x-ms-blob-type', 'BlockBlob');
-    req.setHeader('x-ms-version', '2020-04-08');
-    req.setBodyAsBlob(cv.VersionData);
+    // Process versions in batches to respect callout limits
+    List<ContentVersion> batch = new List<ContentVersion>();
+    List<String> results = new List<String>();
 
-    HttpResponse res = new Http().send(req);
-    System.debug('Upload ' + blobName + ' status: ' + res.getStatusCode());
+    for (Integer i = 0; i < versions.size(); i++) {
+      batch.add(versions[i]);
+
+      if (batch.size() == BATCH_SIZE || i == versions.size() - 1) {
+        results.addAll(uploadBlobBatch(batch, sasRecord.SASToken__c));
+        batch.clear();
+      }
+    }
+
+    // Log results
+    for (String result : results) {
+      System.debug(result);
+    }
+  }
+
+  private static List<String> uploadBlobBatch(
+    List<ContentVersion> versions,
+    String sasToken
+  ) {
+    List<String> results = new List<String>();
+
+    for (ContentVersion cv : versions) {
+      String fileName = cv.PathOnClient != null ? cv.PathOnClient : cv.Title;
+      String blobName = EncodingUtil.urlEncode(cv.Id + fileName, 'UTF-8');
+
+      HttpRequest req = new HttpRequest();
+      req.setEndpoint(
+        'https://account425.blob.core.windows.net/container1/' +
+          blobName +
+          '?' +
+          sasToken
+      );
+      req.setMethod('PUT');
+      req.setHeader('x-ms-blob-type', 'BlockBlob');
+      req.setHeader('x-ms-version', '2020-04-08');
+      req.setBodyAsBlob(cv.VersionData);
+
+      try {
+        HttpResponse res = new Http().send(req);
+        results.add('Upload ' + blobName + ' status: ' + res.getStatusCode());
+      } catch (Exception e) {
+        results.add('Error uploading ' + blobName + ': ' + e.getMessage());
+      }
+    }
+
+    return results;
+  }
+
+  private static void checkObjectAccess() {
+    if (!Schema.sObjectType.Case.isAccessible()) {
+      throw new System.SecurityException(
+        'Insufficient permissions to access Case object.'
+      );
+    }
+    if (!Schema.sObjectType.ContentDocumentLink.isAccessible()) {
+      throw new System.SecurityException(
+        'Insufficient permissions to access ContentDocumentLink object.'
+      );
+    }
+    if (!Schema.sObjectType.ContentVersion.isAccessible()) {
+      throw new System.SecurityException(
+        'Insufficient permissions to access ContentVersion object.'
+      );
+    }
+    if (!Schema.sObjectType.AzureSAS__c.isAccessible()) {
+      throw new System.SecurityException(
+        'Insufficient permissions to access AzureSAS__c object.'
+      );
+    }
   }
 }
