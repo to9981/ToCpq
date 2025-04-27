@@ -26,7 +26,16 @@ public class ArchiveAttachmentsToAzureBatch implements Database.Batchable<SObjec
       docIds.add(cdl.ContentDocumentId);
     }
 
-    // Then query ContentVersions using the collected IDs
+    // Early return if no documents found
+    if (docIds.isEmpty()) {
+      // Log the empty state and return an empty query
+      System.debug('No documents found to process');
+      return Database.getQueryLocator(
+        [SELECT Id FROM ContentVersion WHERE Id = NULL]
+      );
+    }
+
+    // Main return with documents to process
     return Database.getQueryLocator(
       [
         SELECT VersionData, PathOnClient, Title
